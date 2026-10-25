@@ -1,0 +1,596 @@
+# Memoria del Proyecto: ZombieInvasion
+
+## Descripción General
+Plugin para Minecraft enfocado en generar invasiones zombies automáticas y manuales por rondas, compatible de forma nativa con modelos 3D y recompensas por participación.
+
+### Características Clave
+- **Versión/Target:** v1.1.47 / API de Paper 1.20.6+ / Compatible plenamente con **Purpur 26.2, Java 21 y Java 25**. Código optimizado usando *Pattern Matching*, *Switch Expressions*, *Sealed Interfaces*, *Records*, *ItemDisplay API*, *Zero-Allocation Math* y `InvasionKeys` precacheados. Nativamente integrado con Adventure Components sin deprecaciones.
+- **Actualización v1.1.47 (IA Táctica Asimétrica por Variante, Prevención de Dogpiles y Mitigación de Refuerzos Vanilla):**
+  - 🧠 **1. Roles y Objetivos Tácticos Asimétricos (`ZombieVariant.java`):**
+    - Se implementó `selectTacticalTarget` en la interfaz sellada `ZombieVariant` con lógica especializada para las 11 variantes:
+      - **Tanque (`TANK`):** Vanguardia. Fija al jugador con **mayor valor de armadura** para retar al tanque del equipo defensor y bloquear el frente.
+      - **Rápido (`SPEED`):** Flanqueador. Caza a los jugadores más alejados del centro de batalla, jugadores sprinteando o en fuga con menos presión de mobs.
+      - **Ender (`ENDER`):** Asesino de francotiradores. Prioriza jugadores sosteniendo **Arco o Ballesta** y se teletransporta tras ellos para neutralizar el fuego a distancia.
+      - **Explosivo (`EXPLOSIVE`):** Saboteador y castigador de aglomeraciones. 1º Prioridad: Sabotear al jugador que esté reviviendo a un compañero en una tumba (`ReviveBeacon`). 2º Prioridad: Grupos de 2 o más jugadores juntos (< 6 bloques) para forzar dispersión.
+      - **Gélido (`FROST`):** Controlador de masas. Caza a los jugadores que aún no tienen lentitud o que se desplazan a alta velocidad para inmovilizarlos.
+      - **Escupidor Tóxico (`SPITTER`):** Artillería pesada. Mantiene distancia óptima (8 a 18 bloques) disparando proyectiles parabólicos de ácido.
+      - **Nigromante (`NECROMANCER`):** Titiritero de ejecución. Se mantiene en retaguardia e invoca esbirros que reciben la orden directa de fijar al jugador con **menor porcentaje de salud** para rematarlo.
+      - **Berserker (`BERSERKER`):** Cazador de MVP y duelista reactivo. Fija al jugador con más bajas en la ronda (`playerRoundKills`) y, si cualquier jugador le inflige daño, gira inmediatamente su aggro hacia ese atacante con rugido y partículas de furia.
+      - **Vortex (`VORTEX`):** Disruptor central. Busca posicionarse en el centroide geométrico del equipo para arrastrar a la máxima cantidad de jugadores con su pulso.
+      - **Espectral (`PHANTOM`):** Asesino de solitarios. Fija al superviviente más **aislado** del equipo, castigando a los jugadores que se separan o intentan campear solos.
+      - **Común (`DEFAULT`):** Enjambre balanceado (Anti-Dogpile). Evalúa los atacantes actuales de cada jugador y asigna su objetivo al jugador con **menor cantidad de zombies encima**, distribuyendo la horda equitativamente.
+  - ⚡ **2. Coordinador Central de Aggro & Ticker Inteligente (`ZombieVariantManager.java`):**
+    - Conteo dinámico de objetivos actuales (`targetCounts`) sin sobrecarga de memoria.
+    - Reevaluación escalonada cada ~2 segundos por hash de entidad (`(tickCounter + entityId) % 4 == 0`) para evitar picos de lag y redistribuir targets si un jugador se satura o si surgen condiciones prioritarias (ej. inicio de reanimación).
+    - `assignInitialTarget`: Asignación táctica instantánea en cuanto el zombie nace en `MobSpawner.java`, erradicando que los mobs salgan corriendo en manada hacia el mismo jugador desde el segundo 1.
+  - 🛡 **3. Filtro de Llamada de Refuerzos Vanilla (`ArenaCombatListener.java`):**
+    - Intercepción en `onZombieTarget`: Cancela `TARGET_ATTACKED_NEARBY_ENTITY` y `REINFORCEMENT_TARGET` de Vanilla Minecraft en mobs de invasión (excepto Berserkers). Esto impide que cuando un jugador golpea a un zombie, los otros 40 zombies a su alrededor cancelen sus objetivos tácticos para abalanzarse todos sobre ese único jugador.
+  - ⚙ **4. Configuración en `mobs.yml`:**
+    - Agregado interruptor `variants.tactical_targeting: true`.
+- **Actualización v1.1.46 (Perfeccionamiento de Reanimación Cooperativa por Agacharse / Shift y Ground-Snapping Dinámico):**
+  - 💖 **1. Reanimación Fluida por Agacharse (Sneak / Shift):**
+    - Se implementó `PlayerToggleSneakEvent` en [`ArenaPlayerListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaPlayerListener.java) para reconocimiento inmediato con sonido `pling` y partículas en cuanto el jugador pulsa Shift cerca de una tumba.
+    - Canalización continua mientras el jugador se mantenga agachado (5 segundos en solitario, 3 segundos en modo cooperativo doble).
+    - Descenso suave de progreso (-2.5% por ciclo) en lugar de reseteo abrupto si el jugador se levanta temporalmente para esquivar mobs.
+  - 📍 **2. Corrección Crítica de Ground-Snapping y Coordenadas en Balizas (`ReviveBeacon.java`):**
+    - Corregido el bug donde `ReviveBeacon` calculaba la distancia vertical contra la altura en el aire donde cayó el jugador saltando o empujado, impidiendo que los jugadores en el suelo pudieran canalizar por diferencia de Y (`Math.abs(dy) > 2.8`). Ahora la coordenada canónica de la baliza y el ArmorStand se anclan exactamente al suelo sólido.
+  - 📢 **3. Guías Visuales y Recordatorios en Pantalla (Action Bar):**
+    - Si un jugador vivo está a menos de 4 bloques de una tumba y no está agachado, el plugin le proyecta un mensaje de alerta: `☠ [Compañero] está caído aquí ➡ ¡MANTÉN SHIFT (AGÁCHATE) PARA REVIVIRLO!`.
+  - 🖱 **4. Unificación Táctica de Clic y Shift:**
+    - Hacer clic derecho y agacharse ahora se combinan armoniosamente; el clic acelera +10% de inmediato y mantener Shift sostiene la canalización continua.
+- **Actualización v1.1.45 (Overhaul Integral de Variantes Especiales de Zombies, IA Avanzada, mobs.yml Editable & Blindaje Anti-Fuego Amigo):**
+  - 🧟 **1. Expansión y Rediseño de Variantes (Java 25 Sealed Interface `ZombieVariant`):**
+    - Se implementó una arquitectura sellada con 11 variantes: `TankZombie`, `SpeedZombie`, `EnderZombie`, `ExplosiveZombie`, `FrostZombie`, `ToxicSpitterZombie`, `NecromancerZombie`, `BerserkerZombie`, `VortexZombie`, `PhantomZombie` y `DefaultZombie`.
+    - **Zombie Ender:** Teletransporte táctico real detrás del jugador con partículas de portal y esquiva activa de flechas/proyectiles (65% de probabilidad configurable).
+    - **Zombie Explosivo:** Cuenta regresiva con siseo de TNT y detonación radial que **no inflige daño a otros zombies ni mobs de la invasión** (cero fuego amigo entre zombies), concentrando el daño en los jugadores y la arena.
+    - **Zombie Gélido (Frost):** Aura de frío persistente con partículas de nieve que congela y ralentiza a los supervivientes cercanos.
+    - **Zombie Escupidor Tóxico (Spitter):** Lanza proyectiles ácidos a distancia que forman charcos venenosos temporales en el suelo.
+    - **Zombie Nigromante (Necromancer):** Canaliza círculos mágicos de amatista para invocar mini-refuerzos no-muertos.
+    - **Zombie Berserker:** Al caer por debajo del 35% de vida entra en frenesí con partículas de lava, velocidad y daño incrementado.
+    - **Zombie Vortex:** Pulso magnético que atrae gravitacionalmente a los defensores hacia él.
+    - **Zombie Espectral (Phantom):** Camuflaje translúcido y esquiva de golpes cuerpo a cuerpo.
+  - ⚙ **2. Configuración 100% Dinámica y Ponderada en `mobs.yml`:**
+    - Nueva sección `variants:` con interruptor global `variants.enabled`, probabilidades relativas por pesos (`weight`) y atributos individuales (vida, daño, radio, tiempos de cooldown y nombres con gradientes MiniMessage).
+  - ⚡ **3. `ZombieVariantManager` Centralizado:**
+    - Ticker unificado de habilidades periódico (zero-allocation) iniciado con la arena, hooks en `MobSpawner`, eventos de combate y limpieza en `onDisable()`.
+  - ⚡ **1. Comando `/invasion forcestart [ronda] [boss]` Potenciado e Inteligente:**
+    - Admite especificar cualquier número de ronda configurado en `mobs.yml` (ej: `/invasion forcestart 18`).
+    - **Invasión no activa:** Inicia la invasión inmediatamente en la ronda indicada. Si el emisor es un administrador y no se encuentra en la arena (o no hay participantes), el plugin lo teletransporta automáticamente al punto de spawn de la arena (`getArenaSpawnLocation()`) y lo registra como participante activo con 3 vidas, eliminando pasos manuales tediosos de preparación.
+    - **Invasión ya activa:** Detecta que la partida está en curso y ejecuta un salto dinámico en caliente (`jumpToRound`) a la ronda solicitada, limpiando entidades y mutadores de la ronda previa y regenerando los mobs, temporizadores y hologramas de la ronda destino.
+    - **Parámetro `boss` directo:** Al ejecutar `/invasion forcestart 18 boss` (o `/invasion setround 18 boss`), el plugin fuerza de inmediato la fase de jefe de esa ronda, invocando al Boss configurado con rayo y rugido de dragón para pruebas rápidas de combate contra jefes sin requerir matar a los zombies previos.
+  - 🔄 **2. Nuevos Comandos `/invasion setround <ronda> [boss]` & `/invasion skipround [cant]`:**
+    - `/invasion setround <ronda> [boss]` (alias `/invasion round`, `/invasion jumpround`): Permite establecer o cambiar la ronda en curso a cualquier valor entre 1 y la ronda máxima configurada.
+    - `/invasion skipround [cant]` (alias `/invasion nextround`): Salta la ronda en curso inmediatamente (por defecto 1 ronda, o la cantidad especificada). Si el salto supera la ronda máxima de la invasión (ej: saltar la ronda 20), el sistema automáticamente **dispara la secuencia completa de victoria** (`triggerVictory()`), facilitando probar las recompensas finales de victoria en cuestión de segundos.
+    - `/invasion win` (alias `/invasion victory`, `/invasion forcewin`): Comando administrativo directo para probar instantáneamente la victoria de la invasión activa, entregando las recompensas de MVP y defensores.
+  - 🛡 **3. Limpieza y Transición Robusta en Caliente (`jumpToRound`):**
+    - Cancela la tarea previa de temporizador de ronda (`roundTimerTask.cancel()`).
+    - Limpia jefes activos (`bossFightManager.cleanup()`) y barras de vida de jefes (`activeBossBars`).
+    - Purga todos los zombies hostiles de la ronda anterior en la arena (`purgeArenaMonsters()`).
+    - Finaliza mutadores activos de la ronda previa (`mutatorManager.onRoundEnd`).
+    - Restablece el contador de bajas de ronda (`playerRoundKills.clear()`).
+    - Emite un anuncio de gala con gradientes carmesí y esmeralda a toda la arena (`⚡ SALTO DE RONDA FORZADO POR ADMINISTRACIÓN ⚡`) y reproduce sonido de logro a los participantes vivos.
+    - Actualiza el Scoreboard, BossBar y Holograma central inmediatamente con los datos de la nueva ronda.
+  - 🎯 **4. Detección Dinámica de Rondas Máximas & Autocompletado Tab:**
+    - Método `getMaxConfiguredRound()` que lee dinámicamente las claves de `mobs.yml` (soporta expansiones de 20, 25, 30 o más rondas sin hardcoding).
+    - Autocompletado inteligente en Tab para `/invasion forcestart`, `/invasion setround` y `/invasion skipround`, sugiriendo todos los números de rondas disponibles y el parámetro opcional `boss`.
+- **Actualización v1.1.42 (Blindaje Integral, Resiliencia y Fallback Jerárquico en Recompensas de Victoria e Ítems Custom):**
+  - 👑 **1. Resiliencia de MVP y Top Killer (`InvasionParticipantRank.java`):**
+    - Corregido el bug donde `isTopKiller()` requería obligatoriamente `kills > 0`. Si un jugador sobrevivía solo la invasión o completaba las 20 rondas en un entorno de pruebas sin acumular bajas directas de mobs (`kills == 0`), era clasificado erróneamente como Defensor en lugar de MVP, quedándose sin los ítems custom del modo competitivo.
+    - Ahora el puesto #1 (`rankPosition == 1`) siempre es reconocido incondicionalmente como el MVP vencedor, garantizando la entrega de las recompensas legendarias.
+  - 🛡 **2. Fallback Jerárquico en Cascada de Ítems de Recompensa (`RewardItemUtil.java` & `InvasionManager.java`):**
+    - Resuelto el problema donde `ConfigurationSection.getKeys(false)` retornaba colecciones vacías `[]` en servidores con archivos `config.yml` preexistentes en disco que no tenían la nueva sección `victory-rewards.items`.
+    - Activado `plugin.getConfig().options().copyDefaults(true)` y autoguardado de secciones faltantes en `ConfigManager.java`.
+    - Implementado fallback triple en `RewardItemUtil.parseRewardItems`: 1º sección activa en disco, 2º sección por defecto en memoria (`parentSec.getDefaultSection()`), 3º fallback directo a los ítems embebidos en el JAR (`conqueror_sword`, `titan_hammer`, `apocalypse_pickaxe`).
+    - Si el GUI interactivo (`victory_rewards.yml`) y la configuración están vacíos, el sistema automáticamente rescata los ítems por defecto del JAR para asegurar que los jugadores nunca se queden con las manos vacías tras superar la ronda 20.
+  - 📍 **3. Entrega Segura de Inventario y Prevención de Pérdida por Teletransporte (`giveItemSafely`):**
+    - Se erradicó la pérdida de ítems arrojados al suelo cuando un jugador tenía el inventario lleno al completar la ronda 20. Anteriormente, los ítems sobrantes caían en la arena e instantáneamente `stopInvasion()` teletransportaba al jugador al punto de salida o spawn exterior, abandonando los ítems en la arena vacía.
+    - Ahora `giveItemSafely` recibe opcionalmente una ubicación de caída segura (`fallbackDropLocation`, usando el spawn de salida), reproduce sonidos de alerta de inventario lleno (`ENTITY_ITEM_PICKUP` y `BLOCK_NOTE_BLOCK_CHIME`) y envía advertencias en el chat (`<yellow>¡Tu inventario estaba lleno! Algunos ítems se dejaron en el suelo...</yellow>`).
+  - 🔍 **4. Auditoría y Trazabilidad en Consola de Servidor:**
+    - Se agregó registro detallado en la consola del servidor durante `awardVictoryRewards()` reportando: nombre de los ganadores, distinción (MVP vs Defensor), modo competitivo (activo/inactivo) y la cantidad exacta de ítems custom y comandos entregados.
+  - 🎁 **5. Actualización del Comando de Pruebas `/invasion givereward`:**
+    - Blindado con el mismo fallback jerárquico para pruebas directas inmediatas (`/invasion givereward <jugador> victory`).
+- **Actualización v1.1.41 (Distribución Competitiva de Victoria Ronda 20 - MVP Top Killer vs Defensores Sobrevivientes en Java 25):**
+  - 👑 **1. Sistema Competitivo de MVP / Top Killer (`InvasionParticipantRank.java`):**
+    - Record de Java 25 (`InvasionParticipantRank`) que encapsula con inmutabilidad y cero sobrecarga de asignación: jugador, UUID, nombre, bajas totales de la invasión (`kills`), bajas de ronda, vidas restantes, Z-Coins acumulados y puesto de clasificación.
+    - Implementa `Comparable<InvasionParticipantRank>` con ordenamiento determinista multicriterio: 1º Mayor cantidad de bajas (Kills), 2º Vidas de supervivencia restantes, 3º Z-Coins acumulados.
+    - Manejo robusto de empates: si varios jugadores empatan en el primer puesto de bajas, todos reciben la distinción y premios de MVP para premiar la excelencia sin arbitrariedad.
+  - 🏆 **2. Jerarquía Sellada en Java 25 (`VictoryAward.java`):**
+    - `public sealed interface VictoryAward permits VictoryAward.MvpAward, VictoryAward.DefenderAward`.
+    - `MvpAward`: Galardón máximo. Recibe en exclusiva los **Ítems Legendarios Personalizados** (espadas, martillos, picos del config o configurados interactivamente vía `/invasion setrewards`), bono superior de dinero (`mvp.money`), bono de Z-Coins (`mvp.points`), comandos de élite, título exclusivo y anuncio de gloria en el servidor.
+    - `DefenderAward`: Galardón para los defensores sobrevivientes. Reciben dinero de Vault (`defenders.money`), puntos Z-Coins (`defenders.points`), comandos de consola y objetos secundarios de supervivencia.
+  - ⚡ **3. Pattern Matching Exhaustivo con Switch en `InvasionManager.java`:**
+    - Refactorizado `awardVictoryRewards()`: evalúa la bandera `victory-rewards.competitive-mode`.
+    - Procesa la entrega de recompensas con exhaustividad verificada en tiempo de compilación mediante `switch (award) { case VictoryAward.MvpAward mvp -> ...; case VictoryAward.DefenderAward def -> ...; }`.
+    - Emite un anuncio de gala global `broadcastCompetitivePodium(...)` con el podio completo (#1 Oro MVP, #2 Plata Defensor, #3 Bronce Defensor) informando a todo el servidor quién reclamó el ítem legendario.
+  - ⚙ **4. Configuración Escalable en `config.yml`:**
+    - Agregado `victory-rewards.competitive-mode` (por defecto `true`).
+    - Secciones dedicadas e independientes `victory-rewards.mvp` y `victory-rewards.defenders`.
+    - Si `competitive-mode` es establecido en `false`, el sistema preserva compatibilidad absoluta otorgando los ítems a todos los sobrevivientes por igual.
+- **Actualización v1.1.40 (Editor Interactivo GUI Drag-and-Drop de Recompensas de Victoria & Compatibilidad Total con Plugins Custom):**
+  - 🖱 **1. Menú GUI Interactivo de Arrastrar y Soltar (`/invasion setrewards`):**
+    - Se implementó un editor visual interactivo de 54 slots (6 filas) que permite a los administradores colocar, arrastrar y organizar libremente cualquier ítem en las ranuras 0 a 44 (45 ranuras disponibles).
+    - Subcomandos asociados: `/invasion setrewards`, `/invasion rewardmenu`, `/invasion editrewards`, `/invasion rewards`.
+    - Fila de control (slots 45 a 53) con botones protegidos:
+      - `[45]` Libro de información y guía.
+      - `[47]` Botón rojo para vaciar todas las ranuras de recompensa.
+      - `[49]` Bloque de esmeralda para guardar en disco de inmediato con sonido y feedback.
+      - `[51]` Brújula de recuperación para recargar desde disco descartando cambios no deseados.
+      - `[53]` Barrera para cerrar el menú.
+    - *Auto-guardado al cerrar:* Al cerrar el menú con tecla `E` o `ESC`, `InventoryCloseEvent` en [`ArenaMenuListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaMenuListener.java) guarda automáticamente los ítems configurados para que ningún cambio se pierda por accidente.
+  - 💎 **2. Compatibilidad Total con Plugins de Ítems Personalizados (`VictoryRewardManager.java`):**
+    - Creados [`VictoryRewardManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/rewards/VictoryRewardManager.java) y [`VictoryRewardEditorHolder.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/rewards/VictoryRewardEditorHolder.java).
+    - *Doble Serialización de Máxima Fidelidad:* Almacena en `plugins/ZombieInvasion/victory_rewards.yml` tanto la estructura YAML nativa de `ItemStack` de Bukkit como un espejo binario Base64 (`BukkitObjectOutputStream`). Esto preserva con 100% de exactitud todo PersistentDataContainer (PDC), NBT interno, modelos 3D (`CustomModelData`), atributos, encantamientos custom, banderas y lore RGB de plugins como **ItemsAdder**, **Oraxen**, **MMOItems**, **MythicMobs**, **EcoItems**, **CustomCrafting** o ítems vanilla modificados.
+    - *I/O Asíncrono:* El guardado en disco se realiza en un hilo asíncrono, protegiendo el tick loop principal y el TPS del servidor.
+  - 🏆 **3. Entrega Automática e Inmune a Limpieza en Ronda 20:**
+    - Al completar las 20 rondas, [`InvasionManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/invasion/InvasionManager.java) entrega de forma segura cada ítem del editor a los sobrevivientes (`giveVictoryRewards`). Si el inventario está lleno, se arroja a sus pies de forma segura.
+    - Los ítems entregados no poseen etiquetas temporales de arena, garantizando su permanencia definitiva.
+    - Soporte en comando de prueba: `/invasion givereward <jugador> gui` o `/invasion givereward <jugador> victory`.
+- **Actualización v1.1.39 (Soporte Integral de Ítems Personalizados como Recompensas - Espadas, Martillos, Picos Custom):**
+  - ⚔ **1. Utilidad de Ítems Personalizados (`RewardItemUtil.java`):**
+    - Se creó [`RewardItemUtil.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/utils/RewardItemUtil.java) para parsear estructuras completas de ítems desde configuración YAML.
+    - Soporta de forma nativa: `material`, `amount`, `display-name` (MiniMessage y códigos de color), `lore`, `custom-model-data` (compatibilidad con Resource Packs 3D para martillos colosales, picos fantásticos, katanas, etc.), `unbreakable`, `durability`, `enchantments` (formato `ENCHANTMENT:LEVEL` sin límite de nivel vanilla), `flags` y daño de ataque personalizado vía `AttributeModifier` (`Attribute.GENERIC_ATTACK_DAMAGE`).
+    - Método `giveItemSafely(Player, ItemStack)`: entrega el ítem al inventario y, si está lleno, lo arroja al suelo a los pies del jugador de forma segura para evitar pérdidas.
+  - 🏆 **2. Recompensas Permanentes e Inmunes a Limpieza:**
+    - Los ítems generados como recompensa NO contienen claves temporales de la arena (`InvasionKeys.SHOP_ITEM`, `MYSTERY_WEAPON_TYPE`, etc.), garantizando que `clearPlayerInvasionItems` nunca los elimine al terminar la invasión o al abandonar la arena. Pertenecen permanentemente al jugador.
+    - Integrado en [`InvasionManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/invasion/InvasionManager.java):
+      - `awardVictoryRewards()`: Entrega permanentemente todos los ítems configurados en `victory-rewards.items` a los sobrevivientes al ganar la ronda 20.
+      - `handleRoundClear()`: Si se activa la probabilidad de recompensa rara de ronda, entrega aleatoriamente un ítem configurado en `rewards.rare-custom-items`.
+  - 🎁 **3. Comando Administrativo de Pruebas y Entrega (`/invasion givereward`):**
+    - Implementado en [`InvasionCommand.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/commands/InvasionCommand.java): `/invasion givereward <jugador> [victory|rare] [itemKey]`.
+    - Con autocompletado inteligente por tabulador de jugadores, categorías (`victory`, `rare`) y claves de ítems disponibles en la configuración.
+  - ⚙ **4. Configuraciones de Ejemplo en `config.yml`:**
+    - `conqueror_sword`: Espada de Netherite con daño +18.0, Sharpness VII, Fire Aspect III, Looting IV, irrompible y `custom-model-data: 10002`.
+    - `titan_hammer`: Martillo/Maza sísmico con daño +22.0, Density V, Breach IV, Unbreaking V, irrompible y `custom-model-data: 10003`.
+    - `apocalypse_pickaxe`: Pico de las catacumbas con Eficiencia VII, Fortuna V, irrompible y `custom-model-data: 10004`.
+    - `veteran_dagger`: Daga rara de ronda intermedia con daño cortante y durabilidad personalizada.
+- **Actualización v1.1.38 (Blindaje de Combate en Sabuesos Infernales, Daño/Durabilidad Editable en Caja Misteriosa & Recompensa Final Independiente):**
+  - 🐺 **1. Blindaje Total del Combate contra Lobos (Sabuesos Infernales):**
+    - *Des-cancelación en Alta Prioridad:* [`ArenaCombatListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaCombatListener.java) elevado a `EventPriority.HIGHEST`. Si un participante vivo (o con bypass) ataca a un mob de la invasión, ejecuta `event.setCancelled(false)`. Esto anula de raíz las cancelaciones de plugins de claims o regiones (WorldGuard `damage-animals`, GriefPrevention, Lands, Towny) que cancelaban los golpes a jugadores normales al clasificar al lobo como animal pacífico o mascota.
+    - *Inmunidad contra Domesticación:* En [`HellhoundsRound.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/mutator/HellhoundsRound.java) se fuerza `wolf.setTamed(false)` y `wolf.setOwner(null)` al generarse y en cada tick. En [`ArenaInteractionListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaInteractionListener.java) se intercepta `PlayerInteractEntityEvent` para cancelar cualquier clic derecho o intento de alimentación/domesticación sobre mobs de invasión.
+    - *Optimización de I-Frames:* `hound.setMaximumNoDamageTicks(5)` (en lugar de los 20 ticks vanilla) permite que grupos de jugadores ataquen simultáneamente al mismo lobo sin anularse los golpes.
+    - *Unificación de Proyectiles y Melé:* Comprobación consistente de participante vivo tanto para daño directo como flechas/proyectiles.
+  - 🎁 **2. Daño y Durabilidad 100% Editables en la Caja Misteriosa (`mysterybox.yml`):**
+    - Añadidos campos `damage` / `attack-damage` y `durability` / `unbreakable` para cada ítem en [`mysterybox.yml`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/resources/mysterybox.yml).
+    - Integrado `InvasionKeys.CUSTOM_DAMAGE` para aplicar daño personalizado dinámico en ataques melé, proyectiles del `Thunder Bow` y disparos de plasma de la `Ray Gun`.
+    - Soporte completo en [`MysteryBoxItem.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/mysterybox/MysteryBoxItem.java) y [`MysteryBoxManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/mysterybox/MysteryBoxManager.java).
+  - 🏆 **3. Recompensa Final Independiente por Superar la Ronda 20 (`victory-rewards` en `config.yml`):**
+    - Nueva sección configurable `victory-rewards` en [`config.yml`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/resources/config.yml), completamente independiente de las recompensas por ronda.
+    - Entrega a todos los sobrevivientes vivos al repeler la invasión: dinero de Vault (`money`), puntos arcade (`points`), lista de comandos de consola (`commands` con `%player%`), títulos Adventure MiniMessage (`title` / `subtitle`) y mensaje personal. Ejecutado limpiamente en [`InvasionManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/invasion/InvasionManager.java#L1545-L1630).
+- **Actualización v1.1.35 (Corrección Crítica de Incompatibilidad en Partículas de Purpur 26.2 / 1.21.2+):**
+  - 💥 **1. Causa Raíz de `IllegalArgumentException: missing required data class org.bukkit.Color`:**
+    - En Minecraft 1.21.2+ y Purpur 26.2, Mojang y Paper actualizaron la partícula `Particle.FLASH` para soportar tintado de color, convirtiendo su tipo de datos requerido (`getDataType()`) de `Void.class` a `org.bukkit.Color.class`.
+    - Al invocar `world.spawnParticle(Particle.FLASH, loc, count)` sin parámetro de color, `CraftParticle.createParticleParam` arrojaba `Preconditions.checkArgument(data instanceof Color, "missing required data class org.bukkit.Color")`. Esto abortaba la tarea de `triggerPhase2` en el Jefe al 50% de HP y detonaciones de Bomba Santa y Bomba Mono.
+  - 🛡 **2. Solución Robusta y Agnóstica (`ParticleUtil.java`):**
+    - Se creó la clase utilitaria [`ParticleUtil.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/utils/ParticleUtil.java).
+    - Inspecciona dinámicamente `Particle.FLASH.getDataType() == Color.class`: en servidores modernos suministra el objeto `org.bukkit.Color` correspondiente (`Color.RED` para Fase 2 del Boss, `Color.WHITE` para Bomba Santa, `Color.YELLOW` para Bomba Mono), manteniendo retrocompatibilidad con servidores legacy y protegiendo la ejecución con un bloque a prueba de fallos.
+- **Actualización v1.1.34 (Desacople Arquitectónico Modular de Listeners - Erradicación de God Listener):**
+  - 🧩 **1. Descomposición del Monolito `InvasionListener` (1,525 líneas):**
+    - Se dividió la clase monolítica en 4 submódulos independientes bajo `com.appfel.zombieinvasion.listeners`:
+      - [`ArenaCombatListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaCombatListener.java): Daño entre zombies/jugadores, IA de targeting hostil, muertes, efectos de poción, efectos místicos Pack-a-Punch (`FLAME_SHOCK`, `LIGHTNING_CHAIN`, `SOUL_SUPERNOVA`), filtrado de combustión solar y proyectiles (`THUNDER_BOW`, `FROST_CROSSBOW`, `HOLY_BOMB`).
+      - [`ArenaPlayerListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaPlayerListener.java): Ciclo de vida del jugador (Muerte, Reaparición, Conexión, Desconexión), límites espaciales de la arena con comprobaciones fail-fast de mundo (`PlayerMoveEvent`) y control estricto de teletransporte (`PlayerTeleportEvent`).
+      - [`ArenaMenuListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaMenuListener.java): Menús interactivos, compras en la tienda (`InvasionShopHolder`), visualización de estadísticas (`InvasionStatsHolder`), selector de reanimación médica (`ReviveSelectorHolder`) y prevención de transferencia de ítems a cofres o suelo vía drag/click.
+      - [`ArenaInteractionListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/ArenaInteractionListener.java): Manejo de durabilidad protegida (`PlayerItemDamageEvent`), consumo de consumibles de invasión, tótems de inmortalidad, interacción con Altar de Forja y Caja Misteriosa, y despliegue de armas míticas (`Ray Gun`, `Bomba Mono` con holograma de señuelo y reloj).
+  - ⚡ **2. Rendimiento y Mantenibilidad:** Reducción drástica del acoplamiento, mejor perfilado de eventos en el Event Bus de Bukkit y aislamiento total de responsabilidades.
+- **Actualización v1.1.33 (Overhaul de Arquitectura, Concurrencia SQLite WAL, Zero-Allocation & Blindaje de Spawns):**
+  - 🛡 **1. Spawns Blindados bajo `SpawnReason.CUSTOM`:**
+    - Se refactorizó la invocación de esbirros de furia en Fase 2 de [`BossController.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/boss/BossController.java) y del jefe invasor vanilla en [`MobSpawner.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/invasion/MobSpawner.java) utilizando `world.spawn(..., Zombie.class, CreatureSpawnEvent.SpawnReason.CUSTOM, consumer)`.
+    - Erradicada la cancelación inadvertida de esbirros y jefes por el filtro de seguridad de la arena.
+  - 🗄 **2. SQLite de Alta Eficiencia (WAL Mode & Single-Thread Executor):**
+    - En [`DatabaseManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/database/DatabaseManager.java), se activaron los PRAGMAs `journal_mode=WAL; synchronous=NORMAL; busy_timeout=5000;`.
+    - Todas las transacciones de escritura asíncronas (`addGlobalKillAsync`, `addBossKillAsync`, etc.) se canalizan a través de un `ExecutorService` secuencial (`ZombieInvasion-DB-Writer`), eliminando al 100% las excepciones `SQLITE_BUSY: database is locked`.
+    - Añadido hook de parada segura `shutdown()` con espera controlada de terminación.
+  - 🧹 **3. Ciclo de Vida y Limpieza Global en `onDisable()`:**
+    - [`ZombieInvasionPlugin.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/ZombieInvasionPlugin.java) ahora ejecuta `Bukkit.getScheduler().cancelTasks(this)` y `HandlerList.unregisterAll(this)` al desactivarse, garantizando cero tareas huérfanas en recargas.
+  - ⚡ **4. Optimización Zero-Allocation y Fail-Fast en Survival:**
+    - [`ArenaData.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/invasion/ArenaData.java) precomputa `radiusSquared` en su constructor, eliminando multiplicaciones en punto flotante en cada llamada de `isInside()`.
+    - En [`InvasionListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/InvasionListener.java), `onPlayerMove` realiza un retorno instantáneo ("fail-fast") si el jugador está en mundos ajenos a la arena, ahorrando miles de operaciones en servidores con mundos múltiples.
+  - 🎨 **5. Erradicación de Códigos Legacy `§` Residuales:**
+    - Nombres por defecto de Bosses en [`MobSpawner.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/invasion/MobSpawner.java) e [`InvasionManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/invasion/InvasionManager.java) migrados formalmente a `<dark_red><b>Jefe Invasor</b></dark_red>` y MiniMessage nativo.
+- **Actualización v1.1.32 (Incremento de Versión & Verificación Integral de Mutadores y Skills):**
+  - 🚀 **1. Bump de Versión:** Proyecto formalmente actualizado a `v1.1.32` tras la resolución de compatibilidad de spawns de sabuesos en Ronda 5 e integración de directrices de desarrollo modular.
+  - 🐺 **2. Ronda 5 Hellhounds Blindada:** Los sabuesos infernales se generan exclusivamente bajo `SpawnReason.CUSTOM` con IA de combate reactiva y cálculo de suelo seguro.
+- **Actualización v1.1.31 (Corrección Crítica de Spawn y Combate de Sabuesos en Ronda 5 / Mutadores):**
+  - 🐺 **1. Causa Raíz de los Lobos en Ronda 5:**
+    - En la v1.1.28 se implementó un filtro en `CreatureSpawnEvent` (`InvasionListener.java`) para cancelar todos los spawns dentro de la arena que no fueran de tipo `SpawnReason.CUSTOM`.
+    - `HellhoundsRound.java` generaba los sabuesos usando `loc.getWorld().spawnEntity(loc, EntityType.WOLF)`, el cual invoca internamente `CreatureSpawnEvent` con `SpawnReason.DEFAULT`.
+    - Los lobos generados dentro del radio eran cancelados instantáneamente por el evento o quedaban como entidades fantasma desincronizadas, imposibilitando el combate directo o causando que no registren golpes correctamente.
+  - ⚔ **2. Solución Aplicada:**
+    - Se refactorizó la invocación en `HellhoundsRound.java` y `MobSpawner.java` para utilizar `world.spawn(loc, Wolf.class, CreatureSpawnEvent.SpawnReason.CUSTOM, consumer)`.
+    - Ahora todos los sabuesos infernales se generan formalmente bajo `SpawnReason.CUSTOM`, traspasando de forma limpia el filtro anti-spawns naturales de la arena, registrando su UUID en `activeZombies`, respondiendo a la IA de combate y recibiendo daño de los participantes con normalidad.
+- **Actualización v1.1.30 (Sistema Robusto de Logs Asíncronos en logs.yml, Rediseño Profesional de Scoreboard & Eliminación Definitiva de Cristales del Boss):**
+  - 📋 **1. Sistema Robusto de Logs y Auditoría (`PluginLogManager.java` & `logs.yml`):**
+    - Intercepta automáticamente todas las advertencias (`WARNING`), errores (`SEVERE`) y excepciones arrojadas por la consola del servidor o el código del plugin mediante un `java.util.logging.Handler` dedicado.
+    - Operación 100% no bloqueante: los eventos se encolan en un `ConcurrentLinkedQueue<LogEntry>` y se persisten de forma asíncrona cada 5 segundos a `plugins/ZombieInvasion/logs.yml` sin comprometer jamás el TPS del servidor.
+    - Almacena marca de tiempo ISO-8601, nivel de severidad, nombre del logger emisor, mensaje descriptivo y traza completa de error formateada (`stackTrace`).
+    - Límite de retención y rotación automática fijada en 500 entradas para prevenir sobrecarga de disco.
+    - Nuevo panel administrativo `/invasion logs` con botones interactivos para forzar sincronización inmediata (`/invasion logs flush`) o reiniciar el archivo (`/invasion logs clear`).
+  - 🎨 **2. Rediseño Profesional y Sleek del Scoreboard de Arena (`updateScoreboard`):**
+    - Eliminación de la saturación extrema previa (9 colores de gradiente estridentes y 4 separadores visuales que fatigaban la vista).
+    - Paleta de diseño de alto nivel inspirada en minijuegos competitivos premium:
+      - Encabezado carmesí elegante: `<gradient:#e53935:#b71c1c><b>INVASIÓN ZOMBIE</b></gradient>`.
+      - Estructura jerárquica con solo 3 sutiles separadores `<dark_gray>&m-------------------&r</dark_gray>`.
+      - Etiquetas uniformes en tono gris claro `<gray>` para máxima legibilidad.
+      - Valores contrastados y limpios: Ronda `<white>`, Zombies `<red>`, Tiempo `<yellow>`, Vidas `<green>`, Bajas `<yellow>`, Líder `<aqua>`.
+      - Limpieza automática de entradas huérfanas de versiones previas (`resetScores`).
+  - 🔮❌ **3. Eliminación Completa y Definitiva de la Mecánica de Cristales:**
+    - Se erradicaron todos los problemas de desincronización, hologramas estáticos, balizas y bugs de coordenadas asociados a EnderCrystals.
+    - Eliminadas las clases `SoulCrystalData.java` y `CrystalMarkerManager.java`.
+    - Eliminado el Paso 6 del asistente (`/invasion setup crystal`), reduciendo la configuración a 5 pasos limpios y directos (Centro, Spawn, Zombies, Forja, Caja Misteriosa).
+    - Eliminados los comandos heredados `setcrystal`, previsualización de rayos (`preview`) y modo de prueba de 3 golpes (`test`).
+    - **Nueva Cinemática de Boss Fase 2:** Al llegar al 50% de vida, el Jefe entra directamente en `BossPhase.PHASE_3_ENRAGED` (Modo Furia):
+      - Onda de choque sísmica expansiva, sonido de Warden y dragón.
+      - Aceleración de ataques telegrafiados (enfriamiento reducido a 4 segundos).
+      - Buffs de Velocidad II, Fuerza I y Resistencia al Fuego.
+      - Convocatoria de 6 guardias de furia élite equipados con cascos de diamante y armadura que asisten al combate.
+- **Actualización v1.1.29 (Solución Definitiva a Hologramas Bugeados, Duplicados y Huérfanos en la Arena):**
+  - 👻 **1. Diagnóstico y Causa Raíz de Hologramas Duplicados/Fantasmas:**
+    - Los hologramas principales de la arena (`TextDisplay`), los marcadores de configuración de cristales (`TextDisplay`), los stands de la Forja y Caja Misteriosa (`ArmorStand`) y los Power-Ups (`ArmorStand`) se guardaban de forma persistente en los chunks del mundo al reiniciar o crashear el servidor.
+    - Al iniciar una nueva partida o recargar el plugin (`/reload`), las variables en memoria (`hologram`, `holoTop`, `displayStand`, etc.) quedaban nulas o reasignadas, mientras que las entidades físicas permanecían ancladas en el mundo.
+    - Cuando se volvían a generar, se superponían exactamente en las mismas coordenadas, produciendo texto ilegible, parpadeos violentos (flickering), doble sombra y textos estáticos no interactivos.
+    - El comando previo `/invasion purge` excluía deliberadamente `ArmorStand` y `Display` (`if (ent instanceof Display) continue;`), impidiendo su limpieza.
+  - 🏷 **2. Tag Persistente en PDC (`InvasionKeys.HOLOGRAM_TYPE`):**
+    - Se creó la clave `InvasionKeys.HOLOGRAM_TYPE` (`"hologram_type"`) para marcar con certeza cada holograma y ArmorStand creado por el plugin:
+      - `"MAIN_ARENA"`: Holograma central de la arena (estado, rondas, zombies, top killers).
+      - `"CRYSTAL_SETUP"`: Marcadores holográficos persistentes de configuración de cristales.
+      - `"CRYSTAL_PREVIEW"`: Hologramas de la previsualización de 30s de cristales.
+      - `"CRYSTAL_TEST"`: Hologramas interactivos del test de 3 golpes.
+      - `"CRYSTAL_BOSS"`: Hologramas de Cristales Arcanos del Boss en Fase 2.
+      - `"FORJA"`: Hologramas flotantes del altar de Pack-a-Punch.
+      - `"MYSTERY_BOX"`: Hologramas flotantes de la Caja Misteriosa.
+      - `"POWER_UP"`: Displays y textos flotantes de Power-Ups (Max Ammo, Nuke, Insta-Kill, etc.).
+      - `"REVIVE_BEACON"` y `"MONKEY_BOMB"`: Indicadores de reanimación y bomba mono.
+  - 🌪 **3. Barrido Preventivo Pre-Spawn (Spatial Pre-Sweep):**
+    - Antes de invocar cualquier holograma en `InvasionManager`, `CrystalMarkerManager`, `BossController`, `ForgeManager`, `MysteryBoxManager` o `PowerUpDrop`, se realiza un barrido físico en un radio de 2.5 a 3.5 bloques para destruir cualquier entidad previa en esas coordenadas.
+    - Se configuró `setPersistent(false)` en todas las entidades de display temporales para evitar que el servidor las guarde en disco innecesariamente.
+  - 🧹 **4. Sistema Exhaustivo de Purga de Hologramas (`purgeArenaHolograms(boolean keepSetupMarkers)`):**
+    - Nuevo método en `InvasionManager` que barre y elimina todos los hologramas huérfanos o glitcheados en todo el radio de la arena.
+    - Soporta reconocimiento inteligente retroactivo (analiza componentes de texto crudos para purgar hologramas generados por versiones viejas sin PDC).
+    - Parámetro `keepSetupMarkers`: preserva los marcadores de configuración de cristales del administrador a menos que se use la opción `all`.
+    - Integrado automáticamente en `purgeArenaMonsters()`, `stopInvasion()`, `cancelLobby()`, `onEnable()` y `onDisable()`.
+  - 🛠 **5. Comandos Administrativos Nuevos y Mejorados:**
+    - `/invasion purgeholo [all]` (o `/invasion clearholo`, `/invasion setup purgeholo`): Purga inmediata de todos los hologramas duplicados o rotos de la arena.
+    - `/invasion purge`: Ahora purga de forma combinada tanto mobs invasores como hologramas residuales y reporta ambas cantidades en el chat.
+- **Actualización v1.1.28 (Purga Exhaustiva de Mobs Huérfanos, Bloqueo de Spawns Naturales & Limpieza Automática de Arena):**
+  - 🧟‍♂️ **1. Diagnóstico de Mobs "Bugeados" antes de Iniciar:**
+    - Los mobs generados en rondas previas se creaban con `setRemoveWhenFarAway(false)` (para no despawnear naturalmente). Al reiniciar el servidor, recargar o detener una invasión previa en chunks descargados, las entidades quedaban vivas en el mundo pero huérfanas de la lista `activeZombies` en memoria.
+    - Cuando un jugador entraba a la arena y abría el lobby (`/invasion join` o caminando a la arena), la cuenta regresiva de 60s comenzaba, pero los zombies antiguos seguían de pie en la arena.
+    - Como `invasionActive == false`, los mobs no contaban para bajas, puntos, zcoins ni progresión de ronda, y podían atacar o confundir a los participantes.
+    - Además, al fijarse la noche (`setTime(18000L)`), Minecraft generaba esqueletos, arañas y zombies vanilla de forma natural en la arena por falta de filtro en `CreatureSpawnEvent`.
+  - 🧹 **2. Sistema de Purga Automática Integral (`purgeArenaMonsters()`):**
+    - Se implementó un barrido espacial y en memoria que elimina el 100% de monstruos (`Monster`, `Phantom`, `Slime`, `MagmaCube`, `Ghast`, `Wolf` de mutador y cualquier entidad con tag `INVASION_MOB`).
+    - Respeta rigurosamente jugadores, stands de forja/caja y displays holográficos de configuración.
+    - Se ejecuta automáticamente en:
+      - `startLobby()` / apertura de arena (deja la arena impecable durante los 60s de cuenta regresiva).
+      - `startInvasion()` (asegura arena limpia antes de invocar la Ronda 1).
+      - `stopInvasion()` / `cancelLobby()` (limpia al finalizar o cancelar).
+      - `onEnable()` (purga inmediata al encender el servidor tras reloads o reinicios).
+      - Rutina periódica en `arenaCheckTask` (cada 1s fuera de combate elimina cualquier mob intruso).
+  - 🛑 **3. Bloqueo de Spawns Naturales en la Arena (`CreatureSpawnEvent`):**
+    - Se intercepta `CreatureSpawnEvent` en la arena: si el `SpawnReason != CUSTOM`, el spawn es cancelado al instante. Esto bloquea esqueletos, brujas, creepers, spawners vanilla y refuerzos zombies (`REINFORCEMENTS`).
+  - 🛡 **4. Protección en Lobby y Comandos de Administración:**
+    - Durante la cuenta regresiva del lobby, se cancela el targeteo de cualquier mob hacia participantes y se anula el daño mutuo.
+    - Nuevo comando para administradores: `/invasion purge` (o `/invasion clear`, `/invasion setup purge`) para forzar una purga manual instantánea con reporte en chat del número de mobs eliminados.
+- **Actualización v1.1.27 (Corrección Crítica de Vector NaN en Knockback de Pack-a-Punch & Ondas de Choque):**
+  - 💥 **1. Causa Raíz del Error en `InvasionListener.java:1302`:**
+    - Al asestar un golpe con un arma mejorada con Pack-a-Punch Tier 3 (`SOUL_SUPERNOVA`), la onda sísmica expansiva iteraba sobre entidades cercanas e intentaba calcular el vector de empuje: `le.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.2).setY(0.4)`.
+    - **Causa 1:** El bucle no excluía al objetivo principal (`target`). Para el zombie directamente golpeado, `subtract(loc)` producía un vector nulo `(0, 0, 0)`.
+    - **Causa 2:** En Bukkit, normalizar un vector de longitud cero (`0.0 / 0.0`) produce componentes `Double.NaN`.
+    - **Causa 3:** En Paper/Purpur 26.2, llamar a `entity.setVelocity(vec)` con componentes `NaN` o `Infinity` dispara una excepción estricta de validación del servidor: `java.lang.IllegalArgumentException: Velocity cannot be NaN or Infinite: (NaN, 0.4, NaN)`.
+  - 🛡 **2. Solución y Blindaje Matemático en `SOUL_SUPERNOVA`:**
+    - Se añadió la exclusión obligatoria `!e.equals(target)` para no reaplicar el vector sobre el mob que ya recibe el knockback vanilla del golpe.
+    - Se blindó el cálculo con comprobación de longitud cuadrática (`diff.lengthSquared() > 0.0001`): si la distancia es prácticamente nula (mobs apilados o subentidades de Model Engine), se asigna un vector vertical seguro `Vector(0, 0.45, 0)`.
+    - Se verifica `Double.isFinite(vec.getX()) && Double.isFinite(vec.getY()) && Double.isFinite(vec.getZ())` antes de llamar a `setVelocity`.
+    - Se encapsuló `triggerPackEffect` en un bloque `try-catch (Exception ex)` protector para evitar que cualquier anomalía visual o física interrumpa el flujo del combate.
+  - 🔍 **3. Auditoría Preventiva en Ataques de Jefes:**
+    - Se aplicó la misma protección contra vectores nulos en el empuje expansivo del Escudo de Almas ([`BossController.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/boss/BossController.java)), en el impacto de meteorito ([`MeteorSlamAttack.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/boss/MeteorSlamAttack.java)) y en el rayo abisal ([`AbyssalLaserAttack.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/boss/AbyssalLaserAttack.java)).
+- **Actualización v1.1.26 (Overhaul Exhaustivo, Visualización Persistente, Diagnóstico y Test en Vivo de Cristales Arcanos):**
+  - 🔮 **1. Marcadores Holográficos Persistentes de Configuración ([`CrystalMarkerManager.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/boss/CrystalMarkerManager.java)):**
+    - Se resolvió la "ceguera de configuración" donde fijar cristales con `/invasion setup crystal <1|2|3>` solo guardaba números en `config.yml` y dejaba el mundo vacío tras 1 segundo.
+    - Ahora, cada cristal configurado genera inmediatamente un holograma físico `TextDisplay` (`Y + 1.8`, `viewRange 3.5f`, `Billboard.CENTER`, fondo translúcido y sombreado) que muestra su número, estado `[✔ POSICIÓN FIJADA]` y coordenadas X, Y, Z exactas.
+    - Baliza visual periódica (cada 15 ticks) con columnas de partículas `Particle.END_ROD` y `Particle.SOUL_FIRE_FLAME` que brotan desde el suelo, permitiendo al administrador ubicarlos visualmente sin importar la distancia o iluminación.
+    - Se sincronizan automáticamente con el ciclo de vida del servidor (`onEnable`, `reloadAllConfigs`), se ocultan limpiamente durante invasiones activas para no entorpecer el combate, y se restauran al concluir (`stopInvasion`).
+  - ⚡ **2. Previsualización Dinámica con Rayos Arcanos (`/invasion setup crystal preview [segundos|stop]`):**
+    - Permite al admin generar al instante los 3 cristales físicos con sus rayos apuntando al centro de la arena para evaluar alturas, líneas de visión y estética sin jugar rondas previas.
+    - Duración configurable (30 segundos por defecto) o cancelación inmediata con `/invasion setup crystal preview stop`.
+  - ⚔ **3. Modo de Prueba Interactivo de 3 Golpes (`/invasion setup crystal test [stop]`):**
+    - Invoca 3 Cristales Arcanos interactivos con indicadores de vida (`❤ ❤ ❤`) que proyectan rayos de energía al administrador.
+    - Permite al admin golpearlos físicamente (con puño, espada o arco) para probar el retroceso, las partículas críticas, los efectos sonoros (`BLOCK_AMETHYST_BLOCK_HIT`) y la detonación cinematográfica (`BLOCK_AMETHYST_BLOCK_BREAK`).
+    - Al destruir los 3 cristales, el plugin confirma en el chat que la mecánica de la Fase 2 del Boss está 100% calibrada.
+  - 🚀 **4. Teletransportación Directa y Dashboard Interactivo (`/invasion setup crystal tp <1|2|3>`):**
+    - Nuevo comando `/invasion setup crystal tp <1|2|3>` para viajar instantáneamente a cualquier cristal configurado y verificar el terreno.
+    - Ejecutar `/invasion setup crystal` sin argumentos abre un dashboard en chat con botones clickeables para teletransportarse, reasignar posición actual, iniciar previsualización, iniciar test de golpes o resetear (`/invasion setup crystal clear`).
+  - 🛠 **5. Corrección de Bugs Críticos en Combate y Configuración:**
+    - **Fin al borrado de coordenadas configuradas:** En [`BossController.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/boss/BossController.java), si el admin tenía menos de 3 cristales configurados, el plugin ejecutaba `targetLocations.clear()`, borrando las coordenadas válidas. Ahora conserva todas las configuradas y solo autocompleta las faltantes.
+    - **Solución al clipping y asfixia en el suelo:** Los cristales ahora se generan a `Math.floor(y) + 0.15`, flotando limpiamente sobre el bloque de piso sin colisionar ni quedar enterrados.
+    - **Inmunidad absoluta a destrucción vanilla:** Se aplicó `ec.setInvulnerable(true)`. En [`InvasionListener.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/listeners/InvasionListener.java), se intercepta `onEntityDamage` antes del chequeo de invasión activa, cancelando daño ambiental, asfixia o fuego sobre cristales; se cancelan explosiones en `onCrystalExplode` y se intercepta `ExplosionPrimeEvent` para evitar que un cristal explote por vanilla.
+    - **Soporte total en autocompletado Tab:** Soporte de sugerencias en `/invasion setup crystal ...` y `/invasion setcrystal ...` para `1`, `2`, `3`, `preview`, `test`, `tp`, `clear`, `markers`.
+- **Actualización v1.1.25 (Reorganización Estructural de Comandos de Seteo, Asistente Interactivo & Diagnóstico en Vivo):**
+  - 🏗 **1. Estructura Jerárquica Unificada `/invasion setup <subcomando>`:**
+    - Se modularizó y centralizó toda la lógica de configuración en la nueva clase [`SetupCommandHandler.java`](file:///c:/Users/Abril/OneDrive/Escritorio/APP%20FEL/PLUGINS%20CREADOS/ZombieInvasion/src/main/java/com/appfel/zombieinvasion/commands/SetupCommandHandler.java).
+    - Los comandos de seteo ahora se agrupan en un flujo cronológico ordenado del Paso 1 al Paso 6:
+      - `Paso 1: /invasion setup arena [radio]` (o `/invasion setup radius <radio>`) -> Centro y radio de combate.
+      - `Paso 2: /invasion setup spawn` -> Punto de reaparición y entrada de jugadores.
+      - `Paso 3: /invasion setup zombiespawn <add|list|clear>` -> Gestión de puntos de aparición de zombies.
+      - `Paso 4: /invasion setup forge [set|clear]` -> Altar de Forja Arcana (Pack-a-Punch).
+      - `Paso 5: /invasion setup mysterybox <add|list|clear>` -> Gestión de ubicaciones de Caja Misteriosa.
+      - `Paso 6: /invasion setup crystal <1|2|3>` -> 3 Cristales Arcanos obligatorios del Boss (Fase 2).
+  - 🔍 **2. Diagnóstico Integral y Checklist en Tiempo Real (`/invasion setup status`):**
+    - Muestra en pantalla un informe diagnóstico con marcas `[✔]` (configurado), `[✘]` (requerido faltante) y `[~]` (opcional/autogenerado).
+    - Reporta el estado exacto de cada elemento: coordenadas, radio, cantidad de spawns y conteo de cristales (`3/3`).
+    - Si falta algún elemento obligatorio, genera sugerencias interactivas clickeables en el chat con el comando listo para ejecutar.
+    - Indica claramente si la arena está `★ 100% OPERATIVA Y LISTA PARA JUGAR ★`.
+  - 📖 **3. Asistente Didáctico y Guía Interactiva (`/invasion setup` o `/invasion setup help`):**
+    - Al ejecutar `/invasion setup`, el admin recibe una guía pedagógica completa que explica exactamente para qué sirve cada componente, el orden recomendado de creación, botones interactivos que pegan el comando sugerido en el chat y su estado actual.
+  - 🛡 **4. Compatibilidad Retroactiva Total (Legacy Fallback):**
+    - Todos los comandos antiguos (`/invasion setarena`, `/invasion setradius`, `/invasion setspawn`, `/invasion addzombiespawn`, `/invasion setforge`, `/invasion addmysterybox`, `/invasion setcrystal`) siguen funcionando al 100%, redirigiéndose internamente a través de `setupHandler.handleLegacy()`.
+  - ⚡ **5. Optimización con Records de Java 25 & Rediseño de `/invasion help`:**
+    - Implementación de `SetupStep` Record inmutable en `SetupCommandHandler`.
+    - Eliminación de más de 160 líneas redundantes en `InvasionCommand.java`.
+    - El menú `/invasion help` fue dividido en 3 categorías visuales nítidas con Adventure MiniMessage: *🎮 Supervivencia*, *⚙ Gestión de Partida* y *🏗 Asistente de Configuración de Arenas*.
+    - Incorporación de `ColorUtil.sendSuggestable` para interactuar fluidamente con el chat del jugador.
+- **Actualización v1.1.24 (Auditoría Integral de Daño de Mobs, IA de Lobos, Drops Limpios & Posición Fija de Cristales):**
+  - 🔮 **1. Ubicación Personalizada y Fija de Cristales Arcanos (Fase 2 Boss):**
+    - Nuevo comando administrativo `/invasion setcrystal <1|2|3>` con permiso `zombieinvasion.command.setarena`.
+    - Permite a los administradores fijar exactamente los 3 puntos donde aparecerán los Cristales Arcanos del Boss en la arena.
+    - Soporte de autocompletado en Tab (`1`, `2`, `3`) y guía de progreso interactiva (`1/3`, `2/3`, `3/3`).
+    - En Fase 2, `BossController` lee y genera los 3 cristales exactamente en las coordenadas configuradas. En caso de no haber sido configuradas previamente, cuenta con un fallback triangular alrededor del Boss en suelo seguro.
+    - Anuncio en chat de las coordenadas exactas de los 3 cristales (`[X: Y: Z:]`) y pilares de luz vertical que suben 6 bloques hacia el cielo (`GLOW`, `END_ROD`, `SOUL_FIRE_FLAME`) para visualizarlos instantáneamente desde cualquier rincón de la arena.
+  - 🐺 **2. IA Agresiva de Sabuesos del Infierno (Hellhounds):**
+    - Corregido el comportamiento donde los lobos vagaban sin atacar a los jugadores: en Bukkit/Paper, `setAngry(true)` solo activa la textura de enojo y no fija a los jugadores como objetivo natural de los lobos.
+    - Ahora se asigna agresivamente al jugador participante vivo más cercano tanto al generarse (`setTarget(player)`) como en cada tick de la ronda (`onRoundTick`), forzando persecución activa con `getPathfinder().moveTo(player, 1.45)`.
+    - Atributo `GENERIC_ATTACK_DAMAGE` configurado a 8.0 para que sus mordiscos representen una amenaza real.
+  - 🗑 **3. Purga Total de Drops Basura Vanilla en la Arena:**
+    - Al morir cualquier mob o boss de la invasión en la arena (`onZombieDeath`), `event.getDrops().clear()` y `event.setDroppedExp(0)` limpian el 100% de los drops de vanilla (carne podrida, cascos de cuero, huesos, flechas, lingotes de hierro, etc.).
+    - Todas las piezas de equipamiento otorgadas por `MobSpawner`, debuff helmets y `ArmoredSiegeRound` tienen sus probabilidades de dropeo forzadas a `0.0f` (`setHelmetDropChance(0.0f)`, etc.).
+    - Solo se mantienen los Power-Ups especiales del plugin (que se generan como entidades de drop holográficas independientes) y recompensas de economía/experiencia interna.
+  - 🔍 **4. Auditoría Exhaustiva de Parpadeo Rojo y Fuego en Mobs:**
+    - **Causa de lobos en llamas y parpadeando en rojo:** `hound.setFireTicks(Integer.MAX_VALUE)` mantenía a los lobos físicamente encendidos. En Minecraft, tener `fireTicks > 0` ejecuta cada 20 ticks la rutina de daño por fuego (`hurtTime = 10`), reproduciendo el quejido de daño y el parpadeo rojo permanente aunque tengan resistencia al fuego.
+    - **Solución para lobos:** Se reemplazó el fuego físico por partículas cosméticas envolventes (`Particle.FLAME` y `Particle.SOUL_FIRE_FLAME`) emitidas en `onRoundTick` y forzando `setFireTicks(0)`.
+    - **Causa de zombies parpadeando en rojo:** Undeads en arenas al aire libre sufren quemaduras solares continuas en daylight. Además, colisiones de bloques (`DamageCause.SUFFOCATION`), apiñamiento en esquinas (`DamageCause.CRAMMING`), caídas (`DamageCause.FALL`) y fuego amigo entre mobs (flechas de esqueletos) activaban la animación de daño rojo.
+    - **Solución para zombies:** Se añadió inmunidad al fuego solar mediante `FIRE_RESISTANCE` pasivo y `setVisualFire(false)`. En `onEntityDamage`, se cancelan todos los daños ambientales (`SUFFOCATION`, `CRAMMING`, `DROWNING`, `FALL`, `HOT_FLOOR`, `LAVA`, `FREEZE`, `LIGHTNING`, `FIRE`, `FIRE_TICK`). En `onEntityCombust`, se cancela la combustión y se extingue cualquier fuego residual (`setFireTicks(0)`). En `onEntityDamageByEntity`, se cancela el fuego amigo si el atacante o el tirador del proyectil es otro mob de la arena.
+- **Actualización v1.1.23 (Auditoría Integral & Correcciones Críticas):**
+  - 🔮 **1. Visibilidad y Posicionamiento de Cristales Arcanos (Fase 2 Boss):**
+    - Corregido el bug donde `getHighestBlockYAt` colocaba cristales sobre techos o techumbres en arenas cerradas o subterráneas. Ahora `findGroundYNear` escanea el suelo relativo al jefe (±3 bloques).
+    - Radio de aparición concentrado de `7.0` a `4.8` bloques para que los cristales permanezcan siempre en el campo de visión directo.
+    - Activado brillo espectral `setGlowing(true)` en cada `EnderCrystal` para ver su silueta a través de mobs, bloques y oscuridad.
+    - Baliza vertical de partículas continuas (`END_ROD` y `SOUL_FIRE_FLAME` de 4 bloques de altura) brotando de cada cristal.
+    - Avisos con sonido de campana de nivel y mensajes en chat/actionbar al invocarse los cristales.
+  - 🪙 **2. Comandos Administrativos para Z-Coins:**
+    - Nuevos comandos para testing y administración: `/invasion addcoins <jugador> <cantidad>`, `/invasion removecoins <jugador> <cantidad>` (alias `/invasion takecoins`), `/invasion setcoins <jugador> <cantidad>`.
+    - Tab-complete completo (subcomandos, nombres de jugadores online y sugerencias de cantidades: 100, 500, 1000, 2500, 5000).
+    - Permiso dedicado en `plugin.yml`: `zombieinvasion.command.coins` (default: op) o `zombieinvasion.command.admin`.
+    - Métodos seguros y sincronizados con Scoreboards en `InvasionManager`: `addZCoins`, `removeZCoins`, `setZCoins`.
+  - 🏹 **3. Munición Táctica para Armas a Distancia (Arcos y Ballestas):**
+    - En `MysteryBoxManager.handleClaimAward()`, al obtener `THUNDER_BOW` o `FROST_CROSSBOW` el jugador recibe automáticamente un carcaj de 64 flechas de combate de la arena.
+    - En `InvasionListener.onPlayerInteract()`, si un jugador en combate intenta tensar o usar un arco/ballesta de invasión y tiene 0 flechas, el plugin le abastece instantáneamente un carcaj táctico de emergencia de 16 flechas de invasión con sonido y Action Bar (`⚡ Carcaj Táctico: +16 Flechas`).
+    - Las flechas de arena tienen tag `SHOP_ITEM` y se purgan al salir de la arena para impedir contrabando o duplicaciones en supervivencia.
+  - ⚔ **4. Reversión Temporal de Mejoras Pack-a-Punch en Ítems Propios:**
+    - Antes, las armas mejoradas en la forja se marcaban como `SHOP_ITEM`, provocando que `clearPlayerInvasionItems` eliminara por completo el arma del jugador al salir o terminar la arena.
+    - Nueva arquitectura con `InvasionKeys.ORIGINAL_ITEM`, `ORIGINAL_NAME`, `ORIGINAL_LORE`, `ORIGINAL_UNBREAKABLE`.
+    - Al subir un arma propia a Tier 1, `ForgeManager` preserva su nombre, lore y durabilidad original en el PDC sin marcarla como ítem desechable de tienda.
+    - Al terminar la partida, salir de la arena, morir o reiniciar el servidor, `revertPlayerUpgradedItem()` restaura el arma del jugador exactamente a su estado previo sin borrarla. Las armas compradas en tienda o misteriosas se eliminan como siempre.
+    - Los ítems de invasión tirados en el suelo de la arena se limpian o revierten automáticamente en `endInvasion()`.
+- **Boss Fights Cinematográficos con Fases y Telegraphing (Opción 5 - Java 25 Sealed Interfaces & Records):**
+  - **Invocación Cinemática & BossBar:** Invocación con relámpago celestial, rugido macabro (`ENTITY_WARDEN_ROAR` / `ENTITY_ENDER_DRAGON_GROWL`) y título en pantalla MiniMessage. Cada boss cuenta con su BossBar individual en tiempo real.
+  - **Ataques Telegrafiados en el Suelo (`TelegraphedAttack` Sealed Interface de Java 25):**
+    - 💥 **MeteorSlamAttack (Impacto de Meteorito Sísmico):** Círculo concéntrico de 4.0 bloques telegrafiado en el suelo con partículas rojas (`DUST`) y sonido de advertencia rítmico durante 2.0 segundos. Detona infligiendo 32.0 de daño radial y empuje vertical a los jugadores que no logren salir a tiempo de la zona roja.
+    - 🌀 **AbyssalLaserAttack (Rayo Abisal):** Pasillo telegrafiado en el suelo de 16 bloques hacia el frente con partículas cian (`DUST`) y carga sónica durante 2.0 segundos. Al disparar, desata una ráfaga sónica perforante (`SONIC_BOOM`) de 36.0 de daño y Oscuridad.
+    - ⚡ **ChaosLightningAttack (Tormenta Eléctrica del Caos):** Marca anillos eléctricos de advertencia bajo los pies de los participantes. Tras 2.0 segundos, caen relámpagos simultáneos con 26.0 de daño radial.
+  - **Mecánica de Fases Dinámicas & Prevención de Saltos:**
+    - **Fase 1 (100% a 50% HP - Combate Táctico):** Ataques telegrafiados cada 7 segundos y aura orbital de fuego y almas.
+    - **Fase 2 (Al alcanzar 50% HP - ¡Escudo de Almas & 3 Cristales Arcanos!):**
+      - **Clamping de Daño:** El daño masivo es absorbido en el 50% exacto para impedir que armas potenciadas o nukes se salten la fase.
+      - **Onda Expansiva & Escudo:** El Boss desata una onda de choque sónica que aleja a los jugadores y se vuelve **100% invulnerable** (`InvasionKeys.BOSS_SHIELD`) con cúpula de partículas de portal y amatista.
+      - **3 Cristales Arcanos (`EnderCrystal`):** Aparecen a 7 bloques de distancia en formación triangular disparando sus rayos morados nativos (`setBeamTarget`) directamente al pecho del Boss. Cada cristal tiene un holograma interactivo `TextDisplay` (`✦ Cristal Arcano ✦ [❤ ❤ ❤]`).
+      - **4 Esbirros Guardianes:** Se generan para custodiar los cristales.
+      - **Destrucción Cooperativa:** Los jugadores deben esquivar esbirros y disparar o golpear a los cristales (3 golpes cada uno). Cada cristal roto genera explosión celestial sin daño a bloques, sonido de amatista rota, anuncio en arena y **+100 Z-Coins** para el destructor.
+      - **Ruptura de Escudo & Aturdimiento:** Al destruir los 3 cristales, el escudo estalla (`ITEM_SHIELD_BREAK`), el Boss queda aturdido por 3.5 segundos con Lentitud 255 y título triunfal para atacar libremente.
+    - **Fase 3 (50% a 0% HP - Modo Furia Desatada / Enrage):**
+      - Tras el aturdimiento, el Boss entra en Furia Desatada: recibe Velocidad I, Fuerza I, aura de fuego del alma y lava, y la frecuencia de ataques telegrafiados se acelera a cada 4.5 segundos.
+  - **Auditoría & Rendimiento Zero-Leaks:** Todas las tareas son cancelables y vinculadas al `BossController`. Los cristales y hologramas se generan con `setPersistent(false)`. Prevención total de daño a bloques (`onCrystalExplode` cancelado). Limpieza absoluta en `/invasion stop`, fin de ronda o desconexiones.
+- **Caja Misteriosa Dinámica (Opción 2 - Mystery Box con ItemDisplay y Rayo Celestial):**
+  - **Ubicación & Haz de Luz Vertical:** Configurable mediante `/invasion setmysterybox` o `/invasion addmysterybox` (o autogenerada en el cuadrante oeste de la arena). Proyecta un imponente haz de luz de partículas al cielo visible desde toda la arena mientras esté disponible.
+  - **Cofre Físico & Holograma:** Bloque de cofre con holograma interactivo que muestra el coste dinámico (950 Z-Coins) y el estado en vivo (Disponible, Tirando, etc.).
+  - **Ruleta Animada con `ItemDisplay`:** Al pagar 950 Z-Coins, se invoca una entidad moderna `ItemDisplay` que se eleva 1.2 bloques sobre la caja, rotando sobre su eje y ciclando aleatoriamente entre las armas legendarias durante 3.0 segundos con sonido de notas aceleradas (`BLOCK_NOTE_BLOCK_PLING`).
+  - **Probabilidad de Osito de Peluche (Teddy Bear ~8%):** Si la tirada resulta en Osito de Peluche, se reproduce la risa macabra del juego (`ENTITY_WITCH_CELEBRATE`), la caja se cierra de golpe, y se teletransporta automáticamente a otra ubicación de la lista de cajas de la arena.
+  - **Armas Legendarias Exclusivas con PDC (`InvasionKeys.MYSTERY_WEAPON_TYPE`):**
+    - ⚡ **THUNDER_BOW (Arco del Trueno):** Cada flecha disparada invoca un rayo celestial al impactar y desata una explosión de choque eléctrico de 30.0 de daño radial en un radio de 5 bloques con partículas sónicas y de chispas.
+    - 🌀 **RAY_GUN (Pistola de Rayos Láser):** Al hacer clic derecho (con cooldown de 0.5s), dispara un rayo sónico penetrante directo (`SONIC_BOOM` + `DUST_COLOR_TRANSITION` cian/verde) de hasta 32 bloques de alcance, atravesando hordas e infligiendo 50.0 de daño instantáneo a todos los zombies en su trayectoria.
+    - 🩸 **VAMPIRE_BLADE (Espada Vampírica):** Confiere Velocidad I pasiva mientras se empuña. Cada baja de zombie cura instantáneamente 2 corazones (4.0 HP) y restaura 3 niveles de comida y saturación.
+    - ❄ **FROST_CROSSBOW (Ballesta de Hielo):** Dispara proyectiles gélidos que generan una nevada instantánea en un radio de 4 bloques, congelando a todos los zombies con Lentitud 255 durante 6 segundos.
+    - 🐵 **MONKEY_BOMB (Mono Bomba):** Reloj táctico arrojable. Al aterrizar, emite tintineos musicales rítmicos durante 3 segundos atrayendo magnéticamente la atención de todos los zombies cercanos, antes de detonar en una gigantesca explosión letal de 150.0 de daño en área.
+  - **Ventana de Reclamación:** El jugador que pagó la tirada dispone de 10 segundos exactos para recoger su arma legendaria. Si no la recoge en ese tiempo, la caja se cierra limpiamente.
+- **Mutadores de Ronda / Rondas Especiales Temáticas (Opción 4 - Java 25 Sealed Interfaces):**
+  - Diseñado con la arquitectura sellada de Java 25 `public sealed interface RoundMutator permits NormalRound, HellhoundsRound, ToxicFogRound, ArmoredSiegeRound, LightningStormRound`.
+  - **HellhoundsRound (Sabuesos del Infierno estilo CoD Zombies):**
+    - Se activa cada 5 rondas (5, 10, 15, 20...). El cielo se tiñe de rojo y los relámpagos anuncian la invasión de perros del infierno.
+    - Genera lobos rabiosos imbuidos en llamas con Velocidad III y Fuerza II.
+    - Al morir, cada sabueso detona una explosión flamígera secundaria.
+    - **Recompensa Garantizada:** Al completar la ronda de sabuesos con éxito, se genera automáticamente un drop de **Munición Máxima (Max Ammo)** en el centro de la arena para reequipar al escuadrón.
+  - **ToxicFogRound (Niebla Tóxica y Esporas):**
+    - Oscuridad total y ceguera ambiental (`DARKNESS`), con nubes espesas de partículas de esporas venenosas (`WARPED_SPORE` y `SPORE_BLOSSOM_AIR`).
+    - Cada 5 segundos, los supervivientes expuestos sufren Náusea y Hambre. Los zombies generan auras venenosas al atacar.
+  - **ArmoredSiegeRound (Asedio Acorazado):**
+    - Hordas de zombies de asalto equipados con armaduras completas de hierro/cota de malla, escudos tácticos, doble vida (+100% HP) y 50% de resistencia al empuje (`KNOCKBACK_RESISTANCE`).
+  - **LightningStormRound (Tormenta Eléctrica de Choque):**
+    - Tormenta eléctrica continua en la arena con impactos de rayos cósmicos periódicos.
+    - Los zombies están electrificados y transfieren arcos eléctricos de choque entre supervivientes cercanos al recibir daño.
+- **Altar de Forja Arcana / Pack-a-Punch por Niveles con Z-Coins (Opción 5):**
+  - **Altar Místico & Hologramas:** Configurable con `/invasion setforge` (o autogenerado a 4 bloques al este del centro). Compuesto por una mesa de encantamientos protegida contra rotura con partículas místicas circulares continuas (`ENCHANT` y `PORTAL`) y un holograma de dos niveles que indica las mejoras disponibles.
+  - **Interacción con Arma en Mano:** El jugador hace clic derecho en el altar sosteniendo una espada, hacha, arco, ballesta o arma legendaria. Si ya posee el dinero requerido en Z-Coins, su arma asciende de nivel:
+    - **Nivel I (Tier 1 - 2500 Z-Coins):** Daño aumentado en +50%, atributo Irrompible, nombre con gradiente amatista `[PACK-A-PUNCH I]`, y efecto de impacto *Flame Shock* (quema en llamas durante 4 segundos).
+    - **Nivel II (Tier 2 - 4000 Z-Coins):** Daño aumentado en +100%, nombre con gradiente aguamarina `[PACK-A-PUNCH II]`, y efecto de impacto *Lightning Chain* (arco de relámpago con 15.0 de daño a 3 zombies cercanos).
+    - **Nivel III (Tier 3 - 6000 Z-Coins):** Daño aumentado en +175%, nombre con gradiente dorado/rojo cósmico `[PACK-A-PUNCH III]`, y efecto de impacto *Soul Supernova* (explosión sónica de almas de 35.0 de daño en 4 bloques).
+  - **Títulos en Pantalla & Efectos Sonoros:** Sonidos masivos de yunque, portal del End y fuegos artificiales al forjar el arma, transmitiendo el logro a todos los participantes de la arena.
+  - **Anti-Contrabando & Retención:** Los items mejorados conservan sus tags de invasión y son purgados de forma segura al terminar la partida o al morir.
+- **Sistema de Power-Ups / Drops Dinámicos en el Suelo (Opción 2 Anterior - Estilo Arcade / CoD Zombies):**
+  - **Generación en Combate:** Al morir zombies normales o variantes en la arena, existe una probabilidad (~4.5%) de generar un Power-Up flotante holográfico en el suelo con giro continuo y partículas rítmicas.
+  - **Detección Zero-Allocation:** Tarea periódica a 5 ticks (0.25s) que calcula la proximidad de los participantes vivos mediante distancia euclidiana al cuadrado (radio de 1.8 bloques) sin instanciar objetos `Location`.
+  - **Desaparición Automática:** Los Power-Ups duran 20 segundos en el suelo con cuenta regresiva en su holograma superior (`[Nombre] (Xs)`). Si no se recogen, se autodestruyen limpiamente.
+  - **Efectos Globales para los Defensores:**
+    - 💀 **Insta-Kill:** Durante 15 segundos, cualquier ataque (cuerpo a cuerpo o proyectil) elimina a los zombies normales y variantes de un solo golpe (99999.0 de daño) con partículas críticas. Contra jefes/bosses, aplica un multiplicador de daño crítico de x2.5.
+    - 💣 **Bomba Nuclear (Nuke):** Detona instantáneamente a todos los zombies no-bosses presentes en la arena con partículas sónicas y sonido masivo de explosión (sin dañar bloques del mapa), y otorga +200 Z-Coins a todos los jugadores vivos.
+    - ⚡ **Doble Daño y Puntos:** Durante 20 segundos, duplica el daño infligido contra zombies y jefes (+100% de daño) y duplica todos los Z-Coins obtenidos por bajas.
+    - ❄ **Congelación Total (Freeze):** Durante 10 segundos, inmoviliza a todos los zombies en la arena con Lentitud 255 y partículas de nieve continuas (`SNOWFLAKE`), dando un respiro táctico al equipo.
+    - 🛡 **Munición Máxima y Reparación:** Repara la durabilidad de las armaduras y armas de todos los defensores, recarga 32 flechas, restaura el hambre y cura 4 corazones (8 HP).
+  - **Barra de Acción Dinámica:** Mientras algún buff esté activo, se proyecta un temporizador multicolor en vivo en el Action Bar de los combatientes (ej. `⚡ [INSTA-KILL: 12s] [x2 PUNTOS: 18s]`).
+- **Sistema de Economía Arcade Autosuficiente (Opción 6 - Z-Coins):**
+  - Permite configurar en `config.yml` el modo de economía: `settings.economy: "POINTS"` (Z-Coins propios por partida) o `"VAULT"` (dinero global del servidor).
+  - En modo `POINTS`, los jugadores inician con 500 Z-Coins y ganan puntos en tiempo real: +15 por zombie normal, +30 por zombie infectado/debuff, +45 por variante, +250 por jefe/boss, +150 por revivir a un compañero, +100 por ronda superada y +200 por Nuke.
+  - La tienda `/invasion shop` opera con Z-Coins, reflejando el balance en el slot 4 y en el lore de los artículos (`&7Costo: &eX 🪙 Z-Coins`).
+  - Scoreboard dinámico: Muestra en vivo la línea `🪙 Z-Coins: X` para que los defensores administren sus compras durante el combate.
+- **Menú GUI de Perfil y Estadísticas del Jugador (Opción 7 - `/invasion stats` y `/invasion perfil`):**
+  - Comando `/invasion stats [jugador]` y alias `/invasion perfil [jugador]` con autocompletado para jugadores conectados.
+  - Consulta asíncrona respaldada por Virtual Threads de Java 21 / SQLite en `DatabaseManager.getPlayerStatsAsync(UUID)`.
+  - GUI moderna de 36 slots protegida con `InvasionStatsHolder`:
+    - **Slot 13:** Cabeza personalizada del jugador (`SkullMeta`) con su rango de arena dinámico (*Recluta*, *Superviviente*, *Cazador de Zombies*, *Veterano de Guerra*, *Asesino de Titanes*, *Leyenda del Apocalipsis*), total de bajas y récord de ronda máxima.
+    - **Slot 10:** Espada de Diamante con desglose de zombies normales vs bosses eliminados.
+    - **Slot 11:** Estrella del Nether con partidas jugadas, victorias completas, récord de ronda máxima y tasa de victoria (`Win Rate %`).
+    - **Slot 15:** Tótem de Resurrección con historial de heroísmo y compañeros revividos (medallas de apoyo médico).
+    - **Slot 16:** Lingote de Oro con estado actual (en combate vs fuera de arena) y Z-Coins en partida.
+    - **Slot 31:** Botón de cierre interactivo.
+- **Sistema de Modo Espectador + Reanimación de Compañeros (Opción 1):**
+  - **Modo Espectador en Arena:**
+    - Cuando un jugador agota sus 3 vidas en combate pero aún quedan compañeros vivos en la arena (`getAliveParticipantCount() > 0`), no es expulsado ni eliminado; pasa de inmediato a `GameMode.SPECTATOR` para alentar y presenciar la batalla.
+    - Confinamiento estricto: El espectador no puede salir del radio de la arena; `PlayerMoveEvent`, `PlayerTeleportEvent` y la tarea `arenaCheckTask` lo confinan hacia el centro si intenta alejarse.
+    - Inmunidad total y protección: No puede interactuar con bloques, cofres ni soltar o recoger items.
+    - Integración visual en Scoreboard: Muestra `❤ Vidas: ESPECTADOR`, y los jugadores vivos ven `👥 Vivos: X/Y (N 👻)`.
+  - **Tumba / Faro de Reanimación (`ReviveBeacon`):**
+    - En el punto exacto donde cae el jugador, se genera un marcador holográfico (ArmorStand) con la cabeza del caído (`SkullMeta`).
+    - Holograma dinámico superior con el nombre del caído y la barra de progreso en tiempo real (`[||||||||||] XX%`).
+    - Partículas de almas (`SOUL_FIRE_FLAME`, cian) y efectos visuales de baliza que orientan a los supervivientes hacia el caído.
+  - **Reanimación Cooperativa por Canalización (Agacharse 5s):**
+    - Un compañero vivo puede acercarse a menos de 3.5 bloques del faro y agacharse (`isSneaking()`) durante 5 segundos continuos.
+    - Barra de acción en vivo con componentes Adventure (`sendActionBar`), sonidos rítmicos de notas (`BLOCK_NOTE_BLOCK_PLING`) y partículas verdes de aldeano feliz (`VILLAGER_HAPPY`).
+    - **Interrupción de Canalización:** Si el reanimador recibe daño de zombies o jefes (`EntityDamageByEntityEvent`), se levanta o se aleja más de 3.5 bloques, el proceso se aborta de inmediato con aviso sonoro (`ENTITY_VILLAGER_NO`).
+    - Recompensa por heroísmo: El reanimador recibe una bonificación de **$150** vía Vault y un sonido triunfal (`UI_TOAST_CHALLENGE_COMPLETE`).
+  - **Desfibrilador de Emergencia (`/invasion shop` Slot 49):**
+    - Adquirible en la tienda por $1200 como objeto táctico de soporte (`InvasionKeys.DEFIBRILLATOR`).
+    - Al hacer clic derecho en combate:
+      - Si hay un solo compañero caído, lo reanima de inmediato sin necesidad de canalizar.
+      - Si hay 2 o más compañeros caídos, despliega un menú GUI (`ReviveSelectorHolder`) de 9 slots con las cabezas de los caídos para seleccionar al objetivo con un solo clic.
+  - **Mecánica de Renacimiento y Protección:**
+    - El jugador revive en `GameMode.SURVIVAL` con 1 vida, vida restaurada al máximo y teletransporte al centro/spawn de la arena.
+    - Protección temporal de 4 segundos (Resistencia IV, Regeneración II, Resistencia al Fuego I), animación visual de Tótem (`EntityEffect.TOTEM_RESURRECT`) y títulos con gradientes MiniMessage en pantalla.
+  - **Ciclo de Vida y Limpieza Segura:**
+    - Si todos los supervivientes mueren (conteo de vivos llega a 0), se declara derrota global, todos los faros se purgan y los espectadores vuelven a `SURVIVAL` al ser teletransportados fuera.
+    - Si un espectador ejecuta `/invasion leave` o se desconecta, se restaura limpiamente a `GameMode.SURVIVAL`.
+- **Sistema Anti-Reingreso Estricto (Bloqueo en Combate & Eliminación):**
+  - Cuando un jugador agota sus 3 vidas y todos sus compañeros perecen, queda registrado en `eliminatedPlayers` y es expulsado inmediatamente a su ubicación previa/spawn.
+  - Durante una invasión activa en combate, está **estrictamente prohibido el reingreso** o ingreso a mitad de partida: se bloquean comandos `/back`, `/warp zombies`, `/tp`, perlas de ender, teletransporte físico o cruce a pie de la frontera (`PlayerMoveEvent`, `PlayerTeleportEvent`).
+  - La tarea periódica `arenaCheckTask` detecta e inmisericordemente expulsa a cualquier intruso o jugador eliminado fuera del radio de la arena.
+  - Los jugadores solo pueden volver a ingresar cuando la invasión activa culmine por completo (victoria o derrota global).
+- **Ciclo de Vida Estricto y Anti-Contrabando de Items de Tienda (`/invasion shop`):**
+  - Todos los items de la tienda y recompensas de supervivencia se marcan con PersistentDataContainer (`InvasionKeys.SHOP_ITEM`) y lore identificador.
+  - **Uso Exclusivo en Invasión:** Manzanas doradas, bombas santas, tótems de resurrección, espadas cazadoras y desfibriladores solo funcionan dentro del combate activo de la arena. Si se intenta consumir, lanzar o usar fuera, la acción se cancela y el item se purga.
+  - **Anti-Contrabando en Contenedores:** Se bloquea guardar items de la tienda en cofres, barriles, shulkers, tolvas o ender chests (`InventoryClickEvent`).
+  - **Anti-Drop:** Se bloquea arrojar items de la invasión al suelo (`PlayerDropItemEvent`) y se filtran de los drops en caso de muerte (`PlayerDeathEvent`).
+  - **Purga Automática:** Al ser eliminado, salir (`/invasion leave` o desconexión), o cuando finaliza/se detiene la invasión (`stopInvasion`), todos los items de invasión se eliminan del inventario de forma segura y completa.
+- **Optimizaciones Java 25 & Purpur 26.2 (Zero-Allocation & Rendimiento):**
+  - **`InvasionKeys` Precacheados:** Se eliminó la instanciación repetitiva de `NamespacedKey` en eventos de alto impacto (daño, spawns, variantes, balizas, desfibriladores), centralizándolos en constantes estáticas inicializadas en `onEnable()`.
+  - **Matemática Espacial Zero-Allocation en `ArenaData` y `ReviveManager`:** Cálculo directo de distancia euclidiana al cuadrado `dx*dx + dy*dy + dz*dz <= r*r` sin instanciar objetos `Location` en cada movimiento de jugador o tick del servidor.
+- **Auditoría Total de Tienda (`/invasion shop`):** 
+  - Aislamiento seguro con `InvasionShopHolder` para prevenir exploits, solapamiento con otros plugins y bugs de título.
+  - Entrega segura de items (`giveOrDropItem`): si el inventario del jugador está lleno, los items caen a sus pies de forma protegida en lugar de perder dinero e items en el vacío.
+  - **Corrección Definitiva del Bug de Invisibilidad Permanente:** Resuelto el bug crítico de desincronización de paquetes en Purpur/Paper donde el jugador quedaba invisible para siempre aún después de morir. Se implementó `clearPlayerCombatEffects` y resincronización de paquetes de entidades (`refreshPlayerVisibility` vía `hidePlayer`/`showPlayer` diferidos) en muerte, respawn, salida, join y fin de partida. Adicionalmente, el camuflaje dura 30s exactos, se desvanece al golpear mobs, cancela el targeteo de zombies (`onZombieTarget`) y los zombies pierden de inmediato el foco (`clearZombieTargets`).
+  - **Corrección de Granada Santa (Holy Bomb):** Soporte de detonación completa por impacto contra bloques o entidades mediante `ProjectileHitEvent` infligiendo 50.0 de daño radial (5 bloques). Lanzable desde mano principal o secundaria.
+  - **Espada Cazadora de Zombies:** Corregida con propiedad Irrompible (`setUnbreakable(true)`), Filo IV y daño garantizado x2.0 contra zombies y jefes de la invasión.
+  - **Cura Milagrosa:** Ahora valida si el jugador ya tiene la vida al máximo antes de cobrar el dinero.
+  - **Comando de Emergencia / Resincronización:** Añadido `/invasion fix [jugador]` y `/invasion fixinvisible [jugador]` con autocompletado para administradores.
+- **Compatibilidad con MiniMessage & Gradientes Modernos 2026:** Integración completa de Adventure MiniMessage en `ColorUtil`, permitiendo tags de gradientes, formatos modernos y compatibilidad cruzada con códigos clásicos `&` y `&#HEX`. Mensajes globales, títulos de rondas, inicio, victoria y derrota rediseñados con gradientes elegantes.
+- **Mensajes Interactivos Clickeables:** Anuncios de lobby y cuenta regresiva integran eventos `<click:run_command:'/invasion join'>` con tooltips hover para unirse con un solo clic desde el chat. Panel `/invasion help` también es clickeable.
+- **Ambiente Nocturno Automático & Anti-Quemaduras:** Al iniciar la arena y en cada ronda, el tiempo del mundo se fija automáticamente en medianoche (`18000L`) para que los zombies no ardan. Adicionalmente, el evento `EntityCombustEvent` cancela la combustión por luz solar de los zombies de invasión.
+- **Scoreboard Avanzado y Detallado con Gradientes:** Actualización 100% libre de parpadeo (flicker-free mediante Teams). Muestra ronda, zombies restantes, tiempo, vidas, bajas personales, defensores vivos, y añade el **Top Asesino Líder de la Arena** y el **Total de Bajas en la Arena** en tiempo real.
+- **Invasión, Lobby y Salida:** Detección automática al entrar a la arena y comandos `/invasion join` y `/invasion leave` / `/invasion salir`. Cuenta regresiva de lobby de 60 segundos (1 a 12 jugadores). BossBar interactiva de lobby con porcentaje y avisos de sonido.
+- **Control Estricto de Radio de Arena:** Comprobación continua cada segundo (`arenaCheckTask`), en `PlayerMoveEvent`, `PlayerTeleportEvent` y al iniciar cada ronda. Los participantes que salgan o sean empujados fuera del radio de la arena son expulsados automáticamente y devueltos a su spawn/cama.
+- **Zombies Especiales con Efectos Negativos (10%):** Exactamente el 10% de los zombies en cada ronda son asignados con efectos de impacto (Lentitud, Veneno, Debilidad, Ceguera o Wither). El nivel del efecto escala progresivamente cada 3 rondas (I, II, III, IV, hasta V). Cuentan con cascos identificativos tintados y etiquetas con números romanos.
+- **Prioridad de Respawn:** Sobreescritura garantizada sobre Essentials / Multiverse-Core mediante prioridad `HIGHEST` y teletransporte diferido de 1 tick a la ubicación configurada (`/invasion setspawn` o centro de la arena) mientras el jugador tenga vidas restantes (> 0).
+- **Múltiples Bosses y BossBars:** Cada jefe invocado recibe su propia BossBar individual en tiempo real. Soporte para mobs vanilla y MythicMobs con ModelEngine. Las barras se actualizan de forma instantánea al recibir daño y se limpian al morir.
+- **Spawn Inteligente:** Los mobs y bosses detectan el suelo sólido cerca del nivel Y de la arena o respetan exactamente las coordenadas configuradas en `addzombiespawn`, evitando aparecer en techos o bajo tierra.
+
+## Estructura de Paquetes (`com.appfel.zombieinvasion`)
+- **Main:** `ZombieInvasionPlugin` (maneja ciclo de vida, escáner periódico de arena, expulsión de participantes fuera del radio y limpieza segura en `onDisable`)
+- **commands:**
+  - `InvasionCommand.java`: Enrutador principal de comandos y TabCompleter con menú `/invasion help` categorizado.
+  - `SetupCommandHandler.java`: Asistente interactivo modular de configuración de arenas, guía cronológica (Pasos 1 al 6), checklist diagnóstica (`/invasion setup status`) y soporte legacy.
+- **utils:**
+  - `ColorUtil.java`: Soporte para gradientes de MiniMessage, formato HEX `&#RRGGBB`, códigos legacy `&`, componentes nativos Adventure, click events, hover events y broadcasting.
+- **hooks:**
+  - `HookManager.java`: Controlador de librerías externas.
+  - `VaultHook.java`: Para pagar recompensas al superar una ronda y en tienda.
+  - `MythicMobsHook.java`: Reconoce mobs cuyo ID comienza con `MYTHICMOB:` para spawnear modelos 3D (ModelEngine).
+  - `PAPIExpansion.java`: Expande variables a PlaceholderAPI.
+- **invasion:**
+  - `ArenaData.java`: Estructura inmutable (record de Java 25) con delimitación cilíndrica de radio y límites verticales estrictos (altura hacia arriba y profundidad hacia abajo) configurables en `config.yml`.
+  - `ArenaLocationUtil.java`: Utilidad anti-techo que prioriza puntos configurados por el usuario y realiza escaneo bajo cubiertas para evitar que lobos, zombies o drops aparezcan sobre el techo.
+  - `InvasionManager.java`: Controlador central del ciclo de juego, lobby de 60s, vidas, bossbars, economía Z-Coins y GUI de estadísticas.
+  - `InvasionShopHolder.java`: Contenedor InventoryHolder seguro para la tienda `/invasion shop`.
+  - `InvasionStatsHolder.java`: Contenedor InventoryHolder seguro para el menú de perfil `/invasion stats`.
+  - `ReviveBeacon.java`: Entidad ArmorStand holográfica con calavera personalizada del caído y barra de progreso.
+  - `ReviveManager.java`: Gestor central de espectadores, canalización de reanimación a 4 ticks, desfibrilador, bonificaciones e inmunidad.
+  - `ReviveSelectorHolder.java`: Contenedor InventoryHolder para el menú de selección de caídos del desfibrilador.
+  - `MobSpawner.java`: Lógica de spawn adaptativa a techos y multi-bosses integrada con `ArenaLocationUtil`.
+  - `InvasionTask.java`: Un `BukkitRunnable` que dispara la preparación automática si se cumple el intervalo de tiempo.
+  - `ZombieVariant.java`: Variantes especiales de zombies (Tank, Explosive, Teleporter, Speed).
+- **powerup:**
+  - `PowerUpType.java`: Enum de 5 mejoras dinámicas (Insta-Kill, Nuke, Double Points, Freeze, Max Ammo) con sonidos, gradientes y duraciones.
+  - `PowerUpDrop.java`: ArmorStand marcador con rotación animada, cuenta regresiva de 20s y partículas de aldeano.
+  - `PowerUpManager.java`: Gestor de drops con escáner de colisión zero-allocation (5 ticks), activación de efectos globales y Action Bar dinámico.
+- **forge:**
+  - `PackUpgrade.java`: Record de Java 25 que define niveles de mejora (I, II, III), costes, multiplicadores de daño y efectos pasivos.
+  - `ForgeManager.java`: Gestor del altar arcano con mesa de encantamientos, partículas rítmicas circulares, hologramas y ascenso de nivel de armas.
+- **mysterybox:**
+  - `MysteryWeapon.java`: Enum con 5 armas legendarias (Thunder Bow, Ray Gun, Vampire Blade, Frost Crossbow, Monkey Bomb) e items con PDC.
+  - `MysteryBoxItem.java`: Record inmutable de Java 25 para ítems configurables en `mysterybox.yml` con pesos, comandos al reclamar, encantamientos y plantillas precompiladas en memoria (zero-allocation).
+  - `MysteryBoxManager.java`: Gestor de la ruleta animada con ItemDisplay, rayo celestial, osito de peluche, rotación de cofres y lectura dinámica de `mysterybox.yml`.
+  - `mysterybox.yml`: Configuración 100% editable para costes, tiempos de animación, probabilidad del peluche y pool de ítems configurables.
+- **mutator:**
+  - `RoundMutator.java`: Interfaz sellada (`sealed interface`) de Java 25 para mutadores de ronda.
+  - `NormalRound.java`, `HellhoundsRound.java`, `ToxicFogRound.java`, `ArmoredSiegeRound.java`, `LightningStormRound.java`: Records inmutables con mecánicas y efectos visuales de ronda.
+  - `MutatorManager.java`: Orquestador que selecciona y ejecuta los mutadores por ronda.
+- **boss:**
+  - `BossPhase.java`: Enum de fases cinematográficas (Fase 1 Combate, Fase 2 Escudo de Almas, Fase 3 Furia Desatada).
+  - `SoulCrystalData.java`: Gestor de cristales arcanos con hologramas interactivos `TextDisplay`, hits y destrucción sin daño al mapa.
+  - `TelegraphedAttack.java`: Interfaz sellada de Java 25 para ataques con zona telegrafiada en el suelo.
+  - `MeteorSlamAttack.java`, `AbyssalLaserAttack.java`, `ChaosLightningAttack.java`: Records inmutables con render de partículas concéntricas/pasillos y detección de evasión.
+  - `BossController.java`: Controlador de estado, clamping de daño para evitar skips, aura orbital de fuego/almas y bucles de habilidades.
+  - `BossFightManager.java`: Orquestador general de jefes, intercepción de invulnerabilidad, distribución de recompensas de cristales y limpieza.
+- **listeners:**
+  - `InvasionListener.java`: Eventos `EntityDamageByEntityEvent`, `EntityDeathEvent`, `PlayerDeathEvent`, `PlayerRespawnEvent` (prioridad absoluta), `PlayerMoveEvent`, `PlayerTeleportEvent`, `PlayerQuitEvent`, `InventoryClickEvent`, etc.
+- **database:**
+  - `DatabaseManager.java`: SQLite asíncrono con hilos virtuales de Java 21 para registrar estadísticas globales.
+
+## Dependencias Requeridas / Opcionales
+- `Vault` (Economía - Opcional/Requerido para dar dinero)
+- `MythicMobs` (Opcional - Para modelos avanzados)
+- `PlaceholderAPI` (Opcional - Para scoreboards)
+- `Essentials`, `EssentialsSpawn`, `Multiverse-Core` (Compatibilidad de respawn en softdepend)
+
+## Reglas del Proyecto
+- **Versioning (Obligatorio):** Cualquier cambio, arreglo de bugs o actualización futura requiere obligatoriamente incrementar la versión en `build.gradle` (ejemplo, de `1.1.12` a `1.1.13`).
+- **Limpieza de Builds (Obligatorio):** Al compilar una nueva versión, se debe eliminar la versión anterior (usando `gradle clean build` o borrándola manualmente de `build/libs/`) para dejar siempre el `.jar` más reciente como el único archivo disponible.
+
+---
+
+### Versión 1.1.44 (Auditoría, Refuerzo y Resurrección Cooperativa Moderna):
+- **Diagnóstico Integral del Sistema de Reanimación:**
+  1. **Bug de Purga Destructiva:** `purgeArenaHolograms` eliminaba incondicionalmente entidades ArmorStand con tag `REVIVE_BEACON` o `HOLOGRAM_TYPE` al transicionar de ronda (`startRound`), en mob cleans o al saltar rondas, haciendo desaparecer la tumba y desincronizando la entidad del faro.
+  2. **Interrupción Hiper-Sensible por Daño:** `ArenaCombatListener` llamaba `interruptRevive` ante cualquier daño recibido (fuego, veneno, rasguño de 0.5 HP de zombie), reseteando el progreso de 5 segundos de canalización inmediatamente a 0.0%. En oleadas masivas era casi imposible revivir a un compañero sin interrupciones constantes.
+  3. **Ausencia de Interacción por Clic Derecho en la Baliza:** Los jugadores intentaban hacer clic derecho sobre la calavera/tumba para revivir a su compañero o usar el desfibrilador directamente en ella. En Bukkit/Paper, hacer clic sobre un ArmorStand dispara eventos de entidad (`PlayerInteractAtEntityEvent`, `PlayerInteractEntityEvent` y `PlayerArmorStandManipulateEvent`) en vez de `PlayerInteractEvent`. Como ninguno de estos eventos gestionaba la baliza, el clic era ignorado o intentaba manipular el casco del ArmorStand.
+  4. **Radio Espacial y Discrepancias Verticales:** La distancia euclidiana de búsqueda estaba acotada a `2.5 * 2.5` (6.25). Si el caído moría saltando o en escalones/slabs (`dy` de 1.0 a 1.5), la distancia horizontal efectiva quedaba por debajo de 2.0 bloques.
+  5. **Registro Prematuro en `eliminatedPlayers`:** En `handlePlayerDeath`, los caídos con 0 vidas se agregaban a `eliminatedPlayers` antes de verificar si quedaban compañeros vivos para revivirlos, interfiriendo con checks de eliminación.
+- **Soluciones y Mejoras de Arquitectura Implementadas:**
+  - **Inmunidad de Balizas en `purgeArenaHolograms`:** Las balizas activas registradas en `ReviveManager.getActiveBeacons()` quedan blindadas y protegidas contra cualquier barrido o limpieza periódica.
+  - **Auto-Recuperación de Entidades (`ensureEntityAlive`):** En `ReviveBeacon`, si por cualquier motivo externo el ArmorStand se desvanece o invalida, el beacon detecta el estado y re-spawnea la entidad inmediatamente con ground-snapping automático para que nunca quede flotando en el aire.
+  - **Bloqueo Total de Manipulación de ArmorStand (`EquipmentSlot` Locks):** Se aseguraron bloqueos en todos los slots de equipamiento para evitar exploits de retiro de cabezas o alteraciones visuales.
+  - **Tolerancia a Daño Menor y Penalización Proporcional (`handleDamageInterrupt`):**
+    - Daño menor (< 4.0 HP / 2 corazones como fuego, veneno o golpes leves): el reanimador mantiene la canalización activa con un sonido de advertencia sutil.
+    - Daño severo (>= 4.0 HP): penaliza -15% de progreso en lugar de resetear brutalmente de 90% a 0%, otorgando al jugador una oportunidad táctica real de salvar a su compañero en combate.
+  - **Soporte Completo para Interacción Directa (Clic Derecho):**
+    - Se interceptan `PlayerInteractAtEntityEvent`, `PlayerInteractEntityEvent` y `PlayerArmorStandManipulateEvent`.
+    - Si el jugador tiene un **Desfibrilador**, hacer clic derecho directamente sobre la baliza consume 1 desfibrilador y reanima al compañero al instante.
+    - Si el jugador hace clic derecho normal (con o sin items), acelera el progreso (+10% por clic) con partículas, notas musicales y barra de acción en vivo.
+  - **Reanimación Cooperativa (x2 Jugadores):** Si dos defensores se agachan o interactúan simultáneamente junto a la misma tumba, la canalización se acelera dinámicamente de 5s a 3s.
+  - **Rango Espacial Óptimo:** Rango horizontal ampliado a 3.8 bloques con tolerancia vertical de 2.8 bloques.
+  - **PDC de Respaldo en Cabezas del Menú GUI:** `InvasionKeys.REVIVE_BEACON` se graba directamente en el ItemStack para garantizar detección fiable del caído tanto en servidores con online-mode como offline-mode.
+

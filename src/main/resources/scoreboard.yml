@@ -1,0 +1,50 @@
+# ==========================================
+#     ZOMBIE INVASION - SCOREBOARD CONFIG
+#          Creado por TheAngelSAF
+# ==========================================
+
+# Activar o desactivar el scoreboard lateral de la invasión
+enabled: true
+
+# Título superior del Scoreboard (Soporta MiniMessage degradados y códigos &)
+title: "<gradient:#e53935:#b71c1c><b>⚔ INVASIÓN ZOMBIE ⚔</b></gradient>"
+
+# Frecuencia de actualización en ticks (20 ticks = 1 segundo)
+update-interval-ticks: 20
+
+# Líneas del Scoreboard en orden descendente (Máximo 15 líneas).
+# Variables / Placeholders disponibles:
+#   %round%        - Número de la ronda actual
+#   %zombies%      - Cantidad de zombies vivos en la ronda
+#   %time%         - Tiempo restante de la ronda en segundos
+#   %lives%        - Vidas restantes del jugador (con formato de lives-format)
+#   %coins%        - Texto de economía (Z-Coins o Vault)
+#   %kills%        - Bajas del jugador en esta partida
+#   %alive%        - Defensores vivos en la arena
+#   %total%        - Total de defensores registrados
+#   %spec%         - Indicador si el jugador es espectador
+#   %leader%       - Nombre del cazador con más bajas
+#   %leader_kills% - Bajas del cazador líder
+#   %server%       - Texto o IP del servidor
+lines:
+  - "<dark_gray>&m-------------------&r</dark_gray>"
+  - "<gray>Ronda: </gray><white>#%round%</white>"
+  - "<gray>Zombies: </gray><red>%zombies%</red><dark_gray> vivos</dark_gray>"
+  - "<gray>Tiempo: </gray><yellow>%time%s</yellow>"
+  - "<dark_gray>&m-------------------&r</dark_gray> "
+  - "<gray>Vidas: </gray>%lives%"
+  - "%coins%"
+  - "<gray>Tus Bajas: </gray><yellow>%kills%</yellow>"
+  - "<gray>Defensores: </gray><white>%alive%/%total%</white>%spec%"
+  - "<dark_gray>&m-------------------&r</dark_gray>  "
+  - "<gray>Líder: </gray><aqua>%leader%</aqua> <dark_gray>(%leader_kills%)</dark_gray>"
+  - "<dark_gray>%server%</dark_gray>"
+
+# Pie de página / dirección del servidor (%server%)
+server-footer: "play.servidor.net"
+
+# Formato visual de la variable %lives%
+lives-format:
+  multiple: "<green><b>%amount%</b></green> <dark_gray>(❤❤❤)</dark_gray>"
+  last-life: "<red><b>1</b></red> <dark_red><b>[¡ÚLTIMA VIDA!]</b></dark_red>"
+  spectator: "<red><b>0</b></red> <dark_gray>[Espectador]</dark_gray>"

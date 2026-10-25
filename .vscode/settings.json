@@ -1,0 +1,17 @@
+{
+    "java.jdt.ls.java.home": "C:\\Users\\Abril\\.jdks\\jdk-21.0.12.1+1",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Users\\Abril\\.jdks\\jdk-21.0.12.1+1",
+            "default": true
+        }
+    ],
+    "gradle.java.home": "C:\\Users\\Abril\\.jdks\\jdk-21.0.12.1+1",
+    "java.import.gradle.java.home": "C:\\Users\\Abril\\.jdks\\jdk-21.0.12.1+1",
+    "java.import.gradle.wrapper.enabled": true,
+    "terminal.integrated.env.windows": {
+        "JAVA_HOME": "C:\\Users\\Abril\\.jdks\\jdk-21.0.12.1+1",
+        "Path": "C:\\Users\\Abril\\.jdks\\jdk-21.0.12.1+1\\bin;${env:Path}"
+    }
+}

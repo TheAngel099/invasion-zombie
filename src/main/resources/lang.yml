@@ -1,0 +1,14 @@
+messages:
+  prefix: "<gradient:#ff0844:#ffb199><b>⚔ INVASIÓN</b></gradient> <dark_gray>»</dark_gray> <gray>"
+  
+  invasion-started: "<gradient:#ff0000:#ff5500><b>☠ ¡Una Invasión Zombie ha comenzado en tu mundo!</b></gradient>"
+  invasion-ended: "<gradient:#00f2fe:#4facfe><b>🏆 ¡La invasión ha sido repelida con éxito!</b></gradient>"
+  
+  round-start: "<gradient:#f7971e:#ffd200><b>⚔ Ronda %round% iniciada.</b></gradient> <gray>¡Eliminen a todos los zombies!</gray>"
+  round-cleared: "<gradient:#43e97b:#38f9d7><b>✔ ¡Ronda %round% completada!</b></gradient> <gray>Avanzando a la siguiente...</gray>"
+  
+  zombies-remaining: "<gray>Zombies restantes:</gray> <red><b>%amount%</b></red>"
+  
+  reward-received: "<gradient:#a8ff78:#78ffd6><b>✔ ¡Recibiste</b></gradient> <yellow><b>$%money%</b></yellow> <gray>por defender la ronda!</gray>"
+  rare-reward-received: "<gradient:#f857a6:#ff5858><b>★ ¡Has tenido suerte y obtuviste un objeto raro!</b></gradient>"
+  no-participation: "<gradient:#ff416c:#ff4b2b><b>✘ No recibiste recompensa porque no hiciste daño a ningún zombie en esta ronda.</b></gradient>"

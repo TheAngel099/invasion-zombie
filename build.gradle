@@ -1,0 +1,60 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.appfel.zombieinvasion'
+version = '1.1.47'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+    maven {
+        name = "lumine-repo" // MythicMobs
+        url = "https://mvn.lumine.io/repository/maven-public/"
+    }
+    maven {
+        name = "placeholderapi-repo"
+        url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
+    }
+    maven {
+        name = "vault-repo"
+        url = "https://jitpack.io"
+    }
+}
+
+processResources {
+    def props = [version: version, 'project.version': version, project: [version: version]]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand(props)
+    }
+}
+
+dependencies {
+    // Usamos Paper API compatible con Java 21+ / Java 25 (1.20.6+)
+    compileOnly "io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT" 
+    
+    // Dependencia de MythicMobs
+    compileOnly 'io.lumine:Mythic-Dist:5.6.2'
+    
+    // Dependencia de PlaceholderAPI
+    compileOnly 'me.clip:placeholderapi:2.11.5'
+    
+    // Dependencia de Vault para la economía
+    compileOnly 'com.github.MilkBowl:VaultAPI:1.7'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-parameters', '-Xlint:deprecation', '-Xlint:unchecked'])
+}

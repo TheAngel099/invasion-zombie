@@ -1,0 +1,181 @@
+# ==============================================================================
+#                 ZOMBIE INVASION - CAJA MISTERIOSA (MYSTERY BOX)
+#                         Creado por TheAngelSAF
+# ==============================================================================
+# Configuración avanzada de la Caja Misteriosa estilo CoD Zombies.
+# Los nombres y descripciones soportan formato MiniMessage (<gradient>, <color>, <b>)
+# y códigos clásicos de color con &.
+#
+# Comandos al reclamar:
+#   Puedes añadir comandos de consola que se ejecutarán cuando el jugador recoja el ítem.
+#   Variables disponibles: %player%, %item%
+# ==============================================================================
+
+settings:
+  # Costo por cada tirada de la caja en Z-Coins o economía Vault
+  cost: 950
+  
+  # Duración del giro de la ruleta en ticks (20 ticks = 1 segundo, 60 = 3s)
+  roll-duration-ticks: 60
+  
+  # Tiempo en segundos que el jugador tiene para recoger el ítem antes de que la caja se cierre
+  claim-timeout-seconds: 10
+  
+  # Si el premio es un arco o ballesta, ¿entregar automáticamente 64 flechas de combate?
+  give-arrows-with-ranged: true
+
+  # Broma del Peluche (Teddy Bear) que enfurece la caja y la teletransporta a otra ubicación
+  teddy-bear:
+    enabled: true
+    # Probabilidad en porcentaje (8.0 = 8%)
+    chance-percent: 8.0
+
+# ==============================================================================
+#                            POOL DE ÍTEMS Y ARMAS
+# ==============================================================================
+# Habilidades especiales nativas disponibles para 'special-ability':
+#   - THUNDER_BOW     (Dispara flechas que invocan rayos celestiales y daño de área radial)
+#   - RAY_GUN         (Clic derecho dispara un haz de plasma sónico penetrante)
+#   - VAMPIRE_BLADE   (Regenera salud y comida con cada baja de zombie)
+#   - FROST_CROSSBOW  (Inmoviliza y congela en área a todos los zombies cercanos)
+#   - MONKEY_BOMB     (Lanza un señuelo musical que atrae a los zombies y detona)
+#   - NONE            (Ítem estándar sin habilidad mítica nativa)
+#
+# Parámetros editables por ítem:
+#   - damage / attack-damage: Daño personalizado infligido al atacar o al detonar la habilidad.
+#   - unbreakable: true/false (Si es true, el ítem jamás se gasta ni se rompe).
+#   - durability: Durabilidad personalizada restante si unbreakable es false.
+#   - weight: Probabilidad relativa de aparición en la ruleta de la caja.
+# ==============================================================================
+items:
+  thunder_bow:
+    enabled: true
+    weight: 15
+    special-ability: "THUNDER_BOW"
+    material: "BOW"
+    amount: 1
+    damage: 30.0
+    unbreakable: true
+    durability: 384
+    display-name: "<gradient:#ffe259:#ffa751><b>⚡ Arco de Zeus (Thunder Bow)</b></gradient>"
+    lore:
+      - "&8-----------------------------"
+      - "<gradient:#ffe259:#ffa751><b>⚡ ARMA DE LA CAJA MISTERIOSA ⚡</b></gradient>"
+      - "&7Arma mitológica forjada con relámpagos puros."
+      - "&eEfecto: &fAl impactar en zombies o suelo,"
+      - "&b¡invoca rayos celestiales y daño de área eléctrico!"
+      - "&8(30.0 de daño radial en 5 bloques)"
+      - "&a✔ Durabilidad infinita"
+      - "&8-----------------------------"
+    enchantments:
+      - "INFINITY:1"
+      - "POWER:5"
+    flags:
+      - "HIDE_ENCHANTS"
+      - "HIDE_UNBREAKABLE"
+      - "HIDE_ATTRIBUTES"
+    commands-on-claim: []
+
+  ray_gun:
+    enabled: true
+    weight: 10
+    special-ability: "RAY_GUN"
+    material: "NETHERITE_HOE"
+    amount: 1
+    damage: 50.0
+    unbreakable: true
+    durability: 2031
+    display-name: "<gradient:#00f2fe:#4facfe><b>🔫 Blaster Ray-Gun Mk.I</b></gradient>"
+    lore:
+      - "&8-----------------------------"
+      - "<gradient:#ffe259:#ffa751><b>⚡ ARMA DE LA CAJA MISTERIOSA ⚡</b></gradient>"
+      - "&7Dispositivo cuántico de alta compresión."
+      - "&eUso: &aClic Derecho &7para disparar un haz de plasma sónico."
+      - "&c¡Atraviesa hordas de zombies en línea recta!"
+      - "&8(Inflige 50.0 de daño penetrante instantáneo)"
+      - "&a✔ Munición infinita &8(Cooldown: 0.5s)"
+      - "&8-----------------------------"
+    enchantments: []
+    flags:
+      - "HIDE_UNBREAKABLE"
+      - "HIDE_ATTRIBUTES"
+    commands-on-claim: []
+
+  vampire_blade:
+    enabled: true
+    weight: 20
+    special-ability: "VAMPIRE_BLADE"
+    material: "NETHERITE_SWORD"
+    amount: 1
+    attack-damage: 14.0
+    unbreakable: true
+    durability: 2031
+    display-name: "<gradient:#ff0844:#ff4b2b><b>🗡 Daga Vampírica Carmesí</b></gradient>"
+    lore:
+      - "&8-----------------------------"
+      - "<gradient:#ffe259:#ffa751><b>⚡ ARMA DE LA CAJA MISTERIOSA ⚡</b></gradient>"
+      - "&7Filo encantado sediento de sangre de no-muertos."
+      - "&eEfecto: &cRestaura 2 corazones de vida y hambre"
+      - "&7por cada zombie eliminado en combate."
+      - "&ePasiva: &bVelocidad táctica mientras la sostengas."
+      - "&a✔ Completamente irrompible"
+      - "&8-----------------------------"
+    enchantments:
+      - "SHARPNESS:5"
+      - "SWEEPING_EDGE:3"
+    flags:
+      - "HIDE_ENCHANTS"
+      - "HIDE_UNBREAKABLE"
+      - "HIDE_ATTRIBUTES"
+    commands-on-claim: []
+
+  frost_crossbow:
+    enabled: true
+    weight: 15
+    special-ability: "FROST_CROSSBOW"
+    material: "CROSSBOW"
+    amount: 1
+    damage: 20.0
+    unbreakable: true
+    durability: 465
+    display-name: "<gradient:#a1c4fd:#c2e9fb><b>❄ Ballesta Criogénica</b></gradient>"
+    lore:
+      - "&8-----------------------------"
+      - "<gradient:#ffe259:#ffa751><b>⚡ ARMA DE LA CAJA MISTERIOSA ⚡</b></gradient>"
+      - "&7Lanza proyectiles infundidos con nitrógeno líquido."
+      - "&eEfecto: &bInmoviliza completamente a todos los zombies"
+      - "&7en un radio de 4 bloques durante 6 segundos con nieve."
+      - "&a✔ Durabilidad infinita &7+ Carga rápida"
+      - "&8-----------------------------"
+    enchantments:
+      - "QUICK_CHARGE:3"
+      - "MULTISHOT:1"
+    flags:
+      - "HIDE_ENCHANTS"
+      - "HIDE_UNBREAKABLE"
+      - "HIDE_ATTRIBUTES"
+    commands-on-claim: []
+
+  monkey_bomb:
+    enabled: true
+    weight: 25
+    special-ability: "MONKEY_BOMB"
+    material: "CLOCK"
+    amount: 2
+    damage: 60.0
+    unbreakable: false
+    durability: 1
+    display-name: "<gradient:#f857a6:#ff5858><b>🐒 Bomba Mono (Monkey Bomb)</b></gradient>"
+    lore:
+      - "&8-----------------------------"
+      - "<gradient:#ffe259:#ffa751><b>⚡ ARMA DE LA CAJA MISTERIOSA ⚡</b></gradient>"
+      - "&7Clásico muñeco de platillos que toca música alegre."
+      - "&eUso: &aLánzalo al suelo de la arena."
+      - "&eEfecto: &6¡Atrae irresistiblemente a TODOS los zombies"
+      - "&6cercanos durante 6 segundos antes de explotar!"
+      - "&c(Detonación masiva de área al concluir la música)"
+      - "&8-----------------------------"
+    enchantments: []
+    flags:
+      - "HIDE_ATTRIBUTES"
+    commands-on-claim: []

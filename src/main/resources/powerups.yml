@@ -1,0 +1,46 @@
+# ==========================================
+#     ZOMBIE INVASION - POWER-UPS CONFIG
+#          Creado por TheAngelSAF
+# ==========================================
+
+settings:
+  enabled: true
+  drop-chance-percent: 5.0
+  max-simultaneous: 3
+
+# Configuración del Power-Up: Bomba Nuclear (NUKE)
+nuke:
+  bonus-coins-per-player: 200
+  boss-damage: 100.0
+  title: "<gradient:#ffd200:#f7971e><b>💣 ¡BOMBA NUCLEAR!</b></gradient>"
+  subtitle: "<yellow>Activado por <white>%player%"
+  broadcast: "<gradient:#ffd200:#f7971e><b>💣 POWER-UP:</b></gradient> <yellow>¡BOMBA NUCLEAR DETONADA! (+%coins% Z-Coins para todos)</yellow>"
+
+# Configuración del Power-Up: Insta-Kill (Muerte Instantánea)
+insta-kill:
+  duration-seconds: 15
+  title: "<gradient:#ff0844:#ffb199><b>☠ ¡INSTA-KILL!</b></gradient>"
+  subtitle: "<yellow>Activado por <white>%player%"
+  broadcast: "<gradient:#ff0844:#ffb199><b>☠ POWER-UP:</b></gradient> <red>¡INSTA-KILL ACTIVADO por %duration% segundos! ¡Elimina zombies de un golpe!</red>"
+
+# Configuración del Power-Up: Doble Puntos y Doble Daño
+double-points:
+  duration-seconds: 20
+  title: "<gradient:#ffe259:#ffa751><b>⚡ ¡DOBLE PUNTOS Y DAÑO!</b></gradient>"
+  subtitle: "<yellow>Activado por <white>%player%"
+  broadcast: "<gradient:#ffe259:#ffa751><b>⚡ POWER-UP:</b></gradient> <gold>¡DOBLE DAÑO Y x2 Z-COINS durante %duration% segundos!</gold>"
+
+# Configuración del Power-Up: Congelación (Freeze)
+freeze:
+  duration-seconds: 10
+  title: "<gradient:#00c6ff:#0072ff><b>❄ ¡CONGELACIÓN!</b></gradient>"
+  subtitle: "<yellow>Activado por <white>%player%"
+  broadcast: "<gradient:#00c6ff:#0072ff><b>❄ POWER-UP:</b></gradient> <aqua>¡ZOMBIES CONGELADOS durante %duration% segundos!</aqua>"
+
+# Configuración del Power-Up: Munición Máxima (Max Ammo)
+max-ammo:
+  arrows-given: 32
+  health-restored: 8.0
+  title: "<gradient:#11998e:#38ef7d><b>🛡 ¡MUNICIÓN MÁXIMA!</b></gradient>"
+  subtitle: "<yellow>Activado por <white>%player%"
+  broadcast: "<gradient:#11998e:#38ef7d><b>🛡 POWER-UP:</b></gradient> <green>¡MUNICIÓN MÁXIMA! Armaduras reparadas, flechas recargadas y salud restaurada.</green>"

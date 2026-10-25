@@ -1,0 +1,253 @@
+# ==========================================
+#        ZOMBIE INVASION - MOBS & ROUNDS
+#           Creado por TheAngelSAF
+# ==========================================
+
+# ==========================================
+#        CONFIGURACIÓN DE VARIANTES DE ZOMBIE
+# ==========================================
+# Aquí puedes activar, desactivar o modificar las características
+# de cada tipo de zombie especial que aparece en la invasión.
+# weight: Probabilidad relativa de spawn de cada variante (mayor peso = más frecuente).
+variants:
+  enabled: true
+  tactical_targeting: true # IA Asimétrica: Asigna objetivos según el rol de cada variante y previene que todos sigan a 1 jugador
+  types:
+    TANK:
+      enabled: true
+      weight: 15
+      health: 60.0
+      projectile_resistance: 0.8
+      name: "<gradient:#888888:#333333><b>[TANQUE] Zombie Blindado</b></gradient>"
+    SPEED:
+      enabled: true
+      weight: 15
+      speed_amplifier: 2
+      name: "<gradient:#ffff00:#ffaa00><b>[RÁPIDO] Zombie</b></gradient>"
+    ENDER:
+      enabled: true
+      weight: 12
+      teleport_cooldown_ticks: 10
+      teleport_max_distance: 25.0
+      dodge_chance: 0.65
+      name: "<gradient:#aa00ff:#5500aa><b>[ENDER] Zombie</b></gradient>"
+    EXPLOSIVE:
+      enabled: true
+      weight: 12
+      fuse_seconds: 1.2
+      explosion_radius: 4.5
+      damage: 14.0
+      name: "<gradient:#ff8800:#ff2200><b>[EXPLOSIVO] Zombie</b></gradient>"
+    FROST:
+      enabled: true
+      weight: 12
+      freeze_ticks: 140
+      aura_radius: 4.0
+      name: "<gradient:#55ffff:#0088cc><b>[GÉLIDO] Zombie</b></gradient>"
+    SPITTER:
+      enabled: true
+      weight: 10
+      spit_cooldown_ticks: 8
+      puddle_radius: 2.5
+      puddle_duration_seconds: 4
+      name: "<gradient:#55ff55:#00aa00><b>[TÓXICO] Zombie Escupidor</b></gradient>"
+    NECROMANCER:
+      enabled: true
+      weight: 8
+      summon_cooldown_ticks: 24
+      max_minions: 2
+      name: "<gradient:#aa00ff:#440088><b>[NIGROMANTE] Zombie</b></gradient>"
+    BERSERKER:
+      enabled: true
+      weight: 10
+      frenzy_threshold: 0.35
+      name: "<gradient:#ff2222:#880000><b>[BERSERKER] Zombie</b></gradient>"
+    VORTEX:
+      enabled: true
+      weight: 8
+      pulse_cooldown_ticks: 20
+      pull_radius: 8.5
+      name: "<gradient:#3366ff:#000066><b>[VORTEX] Zombie Magnético</b></gradient>"
+    PHANTOM:
+      enabled: true
+      weight: 8
+      dodge_chance: 0.35
+      name: "<gradient:#00ffff:#005577><b>[ESPECTRAL] Zombie</b></gradient>"
+    DEFAULT:
+      enabled: true
+      weight: 25
+
+# Aquí puedes configurar cada ronda y qué mobs aparecen en ella.
+rounds:
+  1:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 5
+        health: 20.0
+        damage: 3.0
+        nametags:
+          - "<gradient:#ff0000:#ffaa00>Zombie Hambriento</gradient>"
+  2:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 8
+        health: 25.0
+        damage: 4.0
+    boss:
+      type: "VANILLA_ZOMBIE"
+      health: 150.0
+      nametags:
+        - "<gradient:#ff0000:#000000>☣ REY ZOMBIE ☣</gradient>"
+  3:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 10
+        health: 30.0
+        damage: 5.0
+  4:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 12
+        health: 35.0
+        damage: 6.0
+    boss:
+      type: "MYTHICMOB:SkeletonKing"
+      health: 300.0
+      nametags:
+        - "<gradient:#8800ff:#000000>☠ SEÑOR DE LA MUERTE ☠</gradient>"
+  5:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 15
+        health: 40.0
+        damage: 7.0
+  6:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 18
+        health: 45.0
+        damage: 8.0
+    boss:
+      type: "VANILLA_ZOMBIE"
+      health: 400.0
+      nametags:
+        - "<gradient:#ff0000:#000000>☣ MUTANTE GIGANTE ☣</gradient>"
+  7:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 20
+        health: 50.0
+        damage: 9.0
+  8:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 22
+        health: 55.0
+        damage: 10.0
+    boss:
+      type: "VANILLA_ZOMBIE"
+      health: 500.0
+      nametags:
+        - "<gradient:#aa0000:#000000>☣ BRUTO DE LA PLAGA ☣</gradient>"
+  9:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 25
+        health: 60.0
+        damage: 11.0
+  10:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 25
+        health: 70.0
+        damage: 12.0
+    boss:
+      type: "VANILLA_ZOMBIE"
+      health: 600.0
+      nametags:
+        - "<gradient:#ff0000:#000000>☣ SEÑOR DE LA GUERRA ZOMBIE ☣</gradient>"
+  11:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 28
+        health: 75.0
+        damage: 13.0
+  12:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 30
+        health: 80.0
+        damage: 14.0
+    boss:
+      type: "MYTHICMOB:SkeletonKing"
+      health: 800.0
+      nametags:
+        - "<gradient:#8800ff:#000000>☠ CABALLERO CAIDO ☠</gradient>"
+  13:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 32
+        health: 85.0
+        damage: 15.0
+  14:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 35
+        health: 90.0
+        damage: 16.0
+    boss:
+      type: "VANILLA_ZOMBIE"
+      health: 1000.0
+      nametags:
+        - "<gradient:#ff0000:#000000>☣ DESTRUCTOR ☣</gradient>"
+  15:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 38
+        health: 100.0
+        damage: 17.0
+  16:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 40
+        health: 110.0
+        damage: 18.0
+    boss:
+      type: "MYTHICMOB:SkeletonKing"
+      health: 1200.0
+      nametags:
+        - "<gradient:#8800ff:#000000>☠ REY EXANIME ☠</gradient>"
+  17:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 45
+        health: 120.0
+        damage: 19.0
+  18:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 50
+        health: 130.0
+        damage: 20.0
+    boss:
+      type: "VANILLA_ZOMBIE"
+      health: 1500.0
+      nametags:
+        - "<gradient:#ff0000:#000000>☣ APOCALIPSIS ZOMBIE ☣</gradient>"
+  19:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 55
+        health: 140.0
+        damage: 22.0
+  20:
+    mobs:
+      - type: "VANILLA_ZOMBIE"
+        amount: 60
+        health: 150.0
+        damage: 25.0
+    boss:
+      type: "VANILLA_ZOMBIE"
+      health: 2000.0
+      nametags:
+        - "<gradient:#ff0000:#000000>☣ DIOS ZOMBIE ☣</gradient>"

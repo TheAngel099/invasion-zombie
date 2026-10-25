@@ -1,0 +1,48 @@
+name: ZombieInvasion
+version: '${version}'
+main: com.appfel.zombieinvasion.ZombieInvasionPlugin
+author: TheAngelSAF
+description: Plugin de invasión y supervivencia zombie creado por TheAngelSAF
+api-version: '1.20'
+depend: [Vault]
+softdepend: [MythicMobs, PlaceholderAPI, Essentials, EssentialsSpawn, Multiverse-Core]
+commands:
+  invasion:
+    description: Comando principal para gestionar las invasiones
+permissions:
+  zombieinvasion.command.help:
+    description: Permite ver el uso del comando de invasión
+    default: true
+  zombieinvasion.command.start:
+    description: Permite iniciar una invasión
+    default: op
+  zombieinvasion.command.stop:
+    description: Permite detener una invasión
+    default: op
+  zombieinvasion.command.reload:
+    description: Permite recargar la configuración del plugin
+    default: op
+  zombieinvasion.command.setarena:
+    description: Permite configurar la arena
+    default: op
+  zombieinvasion.command.setup:
+    description: Permite acceder al asistente y comandos de configuración de la arena
+    default: op
+  zombieinvasion.command.join:
+    description: Permite unirse a la arena de invasión
+    default: true
+  zombieinvasion.command.leave:
+    description: Permite salir de la arena de invasión
+    default: true
+  zombieinvasion.command.shop:
+    description: Permite abrir la tienda de invasión
+    default: true
+  zombieinvasion.command.top:
+    description: Permite ver el top de cazadores
+    default: true
+  zombieinvasion.command.fix:
+    description: Permite reparar la visibilidad y desyncs de jugadores
+    default: op
+  zombieinvasion.command.coins:
+    description: Permite añadir, quitar y gestionar Z-Coins de jugadores
+    default: op

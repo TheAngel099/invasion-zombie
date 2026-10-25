@@ -1,0 +1,44 @@
+# ==========================================
+#      ZOMBIE INVASION - MESSAGES CONFIG
+#          Creado por TheAngelSAF
+# ==========================================
+
+prefix: "<gradient:#ff0844:#ffb199><b>⚔ INVASIÓN</b></gradient> <dark_gray>»</dark_gray> <gray>"
+
+lobby:
+  opened: |
+    <gradient:#ff0844:#ffb199>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>
+      <gradient:#ff0844:#ff4e50><b>⚔ ¡LA ARENA DE INVASIÓN ZOMBIE ESTÁ ABIERTA! ⚔</b></gradient>
+      <gray>Una horda implacable de zombies atacará la arena.</gray>
+      <dark_gray>»</dark_gray> <gradient:#f6d365:#fda085>Iniciando en:</gradient> <yellow><b>%seconds% segundos</b></yellow> <dark_gray>•</dark_gray> <gradient:#f6d365:#fda085>Cupos:</gradient> <white><b>%players%/%max%</b></white>
+      <click:run_command:'/invasion join'><hover:show_text:'<gradient:#00f2fe:#4facfe><b>▶ ¡HAZ CLIC AQUÍ PARA UNIRTE!</b></gradient><newline><gray>Defiende la arena con otros jugadores<newline><gray>y gana recompensas de dinero y objetos raros.'><gradient:#00f2fe:#4facfe><b>⚡ [¡HAZ CLIC AQUÍ PARA UNIRTE A LA ARENA!] ⚡</b></gradient></hover></click>
+    <gradient:#ff0844:#ffb199>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</gradient>
+  reminder: "<gradient:#ff0844:#ffb199><b>⚔ INVASIÓN ZOMBIE</b></gradient> <dark_gray>»</dark_gray> <gray>La arena sigue esperando defensores. </gray><click:run_command:'/invasion join'><hover:show_text:'<gradient:#00f2fe:#4facfe><b>¡Haz clic para entrar a la arena!</b></gradient>'><gradient:#00f2fe:#4facfe><b>[⚡ UNIRSE AHORA]</b></gradient></hover></click>"
+  cancelled: "<gradient:#ff416c:#ff4b2b><b>✘ La invasión fue cancelada:</b></gradient> <gray>%reason%</gray>"
+  bossbar: "&e&lINVASIÓN ZOMBIE &8| &fIniciando en: &c%seconds%s &8(&a%players%/%max%&8)"
+
+arena:
+  joined: "<gradient:#43e97b:#38f9d7><b>✔ Te has unido a la arena de invasión.</b></gradient>"
+  left: "<gradient:#ff416c:#ff4b2b><b>✘ Has salido de la arena de invasión.</b></gradient>"
+  not-configured: "<gradient:#ff416c:#ff4b2b><b>✘ La arena no ha sido configurada todavía. Usa /invasion setup</b></gradient>"
+  already-in: "<gradient:#ff416c:#ff4b2b><b>✘ Ya te encuentras participando en la arena.</b></gradient>"
+  already-started: "<gradient:#ff416c:#ff4b2b><b>✘ La invasión ya está en curso. Podrás unirte en la próxima partida.</b></gradient>"
+  full: "<gradient:#ff416c:#ff4b2b><b>✘ La arena ha alcanzado el límite máximo de jugadores.</b></gradient>"
+  ejected: "<gradient:#ff416c:#ff4b2b><b>✘ Has sido expulsado de la arena:</b></gradient> <gray>%reason%</gray>"
+  non-participant-warning: "&c[!] No puedes permanecer dentro de la arena durante una invasión en curso."
+
+game:
+  invasion-started: "<gradient:#ff0000:#ff5500><b>☠ ¡La Invasión Zombie ha comenzado en la Arena! ☠</b></gradient>"
+  invasion-ended: "<gradient:#00f2fe:#4facfe><b>🏆 ¡La invasión ha sido repelida con éxito! ¡Victoria total!</b></gradient>"
+  invasion-failed: "<gradient:#ff0000:#550000><b>☠ ¡Los zombies dominaron la arena! Fin de la invasión.</b></gradient>"
+  round-start: "<gradient:#f7971e:#ffd200><b>⚔ ¡Ronda %round% iniciada! Defiendan la arena.</b></gradient>"
+  round-cleared: "<gradient:#43e97b:#38f9d7><b>✔ ¡Ronda %round% completada!</b></gradient> <gray>Avanzando a la siguiente...</gray>"
+  boss-spawned: "<gradient:#aa0000:#ff0000><b>¡UN JEFE ÉPICO HA APARECIDO EN LA ARENA!</b></gradient>"
+  reward-received: "<gradient:#a8ff78:#78ffd6><b>✔ Ganaste</b></gradient> <yellow><b>$%money%</b></yellow> <gray>por defender la ronda %round%.</gray>"
+  rare-reward-received: "<gradient:#f857a6:#ff5858><b>★ ¡RECOMPENSA RARA OBTENIDA!</b></gradient>"
+  no-participation: "<gradient:#ff416c:#ff4b2b><b>✘ No recibiste recompensa porque no hiciste daño a ningún zombie en esta ronda.</b></gradient>"
+
+bossbar:
+  title: "<gradient:#ff0844:#ffb199><b>Invasión Zombie</b></gradient> &7- &fRonda %round% &7(&c%zombies% vivos&7) &8[&e%time%s&8]"
+  color: "RED"
+  style: "SOLID"

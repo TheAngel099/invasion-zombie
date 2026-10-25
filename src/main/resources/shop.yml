@@ -1,0 +1,172 @@
+# ==========================================
+#       ZOMBIE INVASION - SHOP CONFIG
+#          Creado por TheAngelSAF
+# ==========================================
+
+title: "&8⚔ Tienda de la Invasión ⚔"
+size: 54
+
+items:
+  strength_potion:
+    slot: 10
+    cost: 500
+    material: "BLAZE_POWDER"
+    name: "&c&lPoción de Fuerza II"
+    lore:
+      - "&7Efecto: &cFuerza II &8(60 segundos)"
+      - "&7¡Multiplica tu poder de ataque contra hordas!"
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  speed_potion:
+    slot: 11
+    cost: 350
+    material: "SUGAR"
+    name: "&b&lPoción de Velocidad II"
+    lore:
+      - "&7Efecto: &bVelocidad II &8(60 segundos)"
+      - "&7¡Muévete rápido para esquivar golpes y jefes!"
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  camouflage_potion:
+    slot: 13
+    cost: 400
+    material: "FERMENTED_SPIDER_EYE"
+    name: "&3&lPoción de Camuflaje (Invisibilidad)"
+    lore:
+      - "&7Efecto: &bInvisibilidad Táctica &8(30 segundos)"
+      - "&7¡Los zombies pierden tu rastro temporalmente!"
+      - "&cNota: &7Se desactiva si atacas o mueres."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  resistance_potion:
+    slot: 15
+    cost: 450
+    material: "IRON_CHESTPLATE"
+    name: "&7&lPoción de Resistencia II"
+    lore:
+      - "&7Efecto: &7Resistencia II &8(45 segundos)"
+      - "&7Reduce en un 40% todo el daño que recibas."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  regen_potion:
+    slot: 16
+    cost: 600
+    material: "GHAST_TEAR"
+    name: "&d&lPoción de Regeneración II"
+    lore:
+      - "&7Efecto: &dRegeneración II &8(30 segundos)"
+      - "&7Restaura rápidamente tus corazones de vida."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  golden_apples:
+    slot: 28
+    cost: 300
+    amount: 3
+    material: "GOLDEN_APPLE"
+    name: "&e&lManzanas Doradas &7(x3)"
+    lore:
+      - "&7Recibes: &e3 Manzanas de Oro"
+      - "&7Otorga absorción y regeneración de emergencia."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  enchanted_apple:
+    slot: 30
+    cost: 1000
+    amount: 1
+    material: "ENCHANTED_GOLDEN_APPLE"
+    name: "&6&lManzana Encantada (Notch) &7(x1)"
+    lore:
+      - "&7Recibes: &61 Manzana de Notch"
+      - "&7¡Absorción IV, Resistencia, Fuego y Regeneración extrema!"
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  holy_bomb:
+    slot: 32
+    cost: 400
+    amount: 3
+    material: "SNOWBALL"
+    name: "&f&lGranada Santa / Holy Bomb &7(x3)"
+    lore:
+      - "&7Recibes: &f3 Granadas Tácticas"
+      - "&7Inflige 50 de daño directo de área (5 bloques)."
+      - "&7¡Explota al contacto con bloques o entidades!"
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  totem:
+    slot: 34
+    cost: 1500
+    amount: 1
+    material: "TOTEM_OF_UNDYING"
+    name: "&6&lTótem Sagrado de Invasión"
+    lore:
+      - "&7Evita una muerte certera en la arena."
+      - "&7Restaura corazones y otorga efectos de salvación."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  zombie_slayer:
+    slot: 38
+    cost: 1200
+    material: "DIAMOND_SWORD"
+    name: "&4&lEspada Zombie Slayer"
+    lore:
+      - "&7Arma sagrada de la invasión."
+      - "&7¡Inflige &cDOBLE DE DAÑO &7a cualquier zombie o jefe!"
+      - "&7Inmune a romperse (Irrompible) con Filo IV."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  spectral_arrows:
+    slot: 40
+    cost: 200
+    amount: 16
+    material: "SPECTRAL_ARROW"
+    name: "&b&lFlechas Espectrales Tácticas &7(x16)"
+    lore:
+      - "&7Flechas brillantes de combate e impacto."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  heal:
+    slot: 42
+    cost: 250
+    material: "GLISTERING_MELON_SLICE"
+    name: "&a&lCura Milagrosa Instantánea"
+    lore:
+      - "&7Restaura completamente tus puntos de vida"
+      - "&7hasta el 100% de tu barra máxima."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"
+
+  defibrillator:
+    slot: 49
+    cost: 1200
+    material: "RECOVERY_COMPASS"
+    name: "&3&l⚡ Desfibrilador de Emergencia"
+    lore:
+      - "&7Dispositivo de electrochoque médico avanzado."
+      - "&7¡Reanima instantáneamente a un compañero caído!"
+      - "&7Uso: Clic derecho cerca de su tumba o al aire."
+      - ""
+      - "&ePrecio: &6%cost% %currency%"
+      - "&a▶ Clic para comprar"

@@ -1,0 +1,199 @@
+# ==========================================
+#        ZOMBIE INVASION - CONFIG
+#          Creado por TheAngelSAF
+# ==========================================
+# NOTA: La configuración ha sido modularizada para máxima editabilidad:
+# - Scoreboard:     plugins/ZombieInvasion/scoreboard.yml
+# - Mensajes/Chat:  plugins/ZombieInvasion/messages.yml
+# - Tienda:         plugins/ZombieInvasion/shop.yml
+# - Power-Ups/Nuke: plugins/ZombieInvasion/powerups.yml
+# - Mobs y Jefes:   plugins/ZombieInvasion/mobs.yml
+# ==========================================
+
+settings:
+  auto-invasion:
+    enabled: true
+    interval-seconds: 3600
+  
+  arena:
+    configured: false
+    world: "world"
+    x: 0.0
+    y: 100.0
+    z: 0.0
+    radius: 50.0
+    # Altura máxima permitida de la arena hacia arriba (desde la coordenada Y central).
+    # Si un jugador se sube al techo o supera este límite vertical, será expulsado de inmediato.
+    height: 15.0
+    # Profundidad máxima permitida hacia abajo (desde la coordenada Y central).
+    height-down: 6.0
+
+  # Modo de economía para la partida:
+  # "POINTS" -> Sistema arcade autosuficiente (Z-Coins ganados durante la partida).
+  # "VAULT"  -> Economía global del servidor ($ dinero de Vault).
+  economy: "POINTS"
+
+  starting-points: 500
+  points:
+    kill-normal: 15
+    kill-debuff: 30
+    kill-variant: 45
+    kill-boss: 250
+    revive-teammate: 150
+    wave-survived: 100
+    nuke-bonus: 200
+
+  powerups:
+    enabled: true
+    drop-chance-percent: 5.0
+    max-simultaneous: 3
+
+  mystery-box:
+    cost: 950
+    teddy-bear-chance: 8.0
+
+  pack-a-punch:
+    tier1-cost: 2500
+    tier2-cost: 4000
+    tier3-cost: 6000
+
+round-settings:
+  max-time-seconds: 300 # Tiempo máximo por ronda en segundos
+  mutators:
+    enabled: true # Rondas temáticas especiales (Sabuesos cada 5 rondas, Niebla, Asedio, Tempestad)
+
+rewards:
+  base-money-per-round: 500.0
+  money-increase-per-round: 100.0
+  rare-item-chance: 15.0
+  rare-item-command: "give %player% diamond_block 1"
+  # Ítems raros personalizados que pueden tocar aleatoriamente al sobrevivir una ronda
+  rare-custom-items:
+    veteran_dagger:
+      material: NETHERITE_SWORD
+      amount: 1
+      display-name: "<gradient:#ff4e50:#f9d423><b>🗡 DAGA DEL VETERANO</b></gradient>"
+      lore:
+        - "<gray>Forjada en los campos de batalla de la invasión.</gray>"
+        - "<dark_gray>•</dark_gray> <yellow>Daño Cortante: +10.0</yellow>"
+        - "<dark_gray>•</dark_gray> <green>Filo V</green>"
+        - ""
+        - "<red><b>★ RECOMPENSA ESPECIAL DE RONDA</b></red>"
+      custom-model-data: 10001 # Opcional: ID para modelo 3D en Resource Pack
+      attack-damage: 10.0
+      unbreakable: false
+      durability: 2000
+      enchantments:
+        - "SHARPNESS:5"
+        - "UNBREAKING:3"
+
+# ==========================================
+#  RECOMPENSA FINAL INDEPENDIENTE (VICTORIA TOTAL)
+# ==========================================
+# Se entrega a los participantes vivos al superar la ronda 20 (repeler la invasión)
+victory-rewards:
+  enabled: true
+
+  # MODO COMPETITIVO:
+  # - true: El jugador con más bajas (MVP / Top Killer) recibe en exclusiva el Ítem Legendario
+  #         (espada, martillo, pico o ítems del menú /invasion setrewards), más bono especial.
+  #         Los demás defensores sobrevivientes reciben dinero, Z-Coins y recompensas de apoyo.
+  # - false: Todos los participantes vivos reciben el paquete completo de ítems y dinero por igual.
+  competitive-mode: true
+
+  # --- CONFIGURACIÓN MVP (TOP KILLER / LÍDER EN BAJAS) ---
+  mvp:
+    money: 25000.0
+    points: 2500
+    commands:
+      - "give %player% netherite_block 1"
+      - "give %player% diamond_block 10"
+    message: "<gradient:#ffd700:#ffae19><b>👑 ¡ERES EL MVP SUPREMO!</b></gradient> <gray>Por liderar la arena con <red><b>%kills% bajas</b></red>, has recibido los <gold><b>Ítems Legendarios Exclusivos</b></gold> y un premio de <green><b>$%money%</b></green>.</gray>"
+    title: "<gradient:#ffd700:#ffa500><b>👑 MVP DE LA INVASIÓN 👑</b></gradient>"
+    subtitle: "<yellow>¡Líder Supremo con %kills% Bajas!</yellow>"
+
+  # --- CONFIGURACIÓN DEFENSORES (HÉROES SOBREVIVIENTES) ---
+  defenders:
+    money: 10000.0
+    points: 1000
+    commands:
+      - "give %player% netherite_ingot 3"
+      - "give %player% diamond_block 5"
+    message: "<gradient:#00f2fe:#4facfe><b>🛡 ¡PREMIO DE DEFENSOR!</b></gradient> <gray>Has recibido <green><b>$%money%</b></green> y recompensas por tu gran apoyo en la victoria total.</gray>"
+    title: "<gradient:#43e97b:#38f9d7><b>🛡 DEFENSOR VICTORIOSO</b></gradient>"
+    subtitle: "<gray>Ronda 20 superada • %kills% bajas</gray>"
+    # Ítems secundarios opcionales para los defensores (vacío por defecto si solo reciben dinero/comandos)
+    items: {}
+
+  # Dinero global / fallback de Vault otorgado a cada ganador sobreviviente
+  money: 10000.0
+  # Puntos o Z-Coins otorgados a cada ganador
+  points: 1000
+  # Comandos de consola ejecutados por cada ganador sobreviviente (%player%)
+  commands:
+    - "give %player% netherite_ingot 3"
+    - "give %player% diamond_block 5"
+  # Ítems personalizados otorgados permanentemente (al MVP en modo competitivo, o a todos si está desactivado)
+  # Admite espadas, picos, martillos (usando mace, pickaxe, sword o custom-model-data para modelos 3D)
+  items:
+    conqueror_sword:
+      material: NETHERITE_SWORD
+      amount: 1
+      display-name: "<gradient:#ff0844:#ffb199><b>⚔ ESPADA DEL CONQUISTADOR APOCALÍPTICO</b></gradient>"
+      lore:
+        - "<gray>Otorgada únicamente al héroe de la arena que repelió</gray>"
+        - "<gray>la invasión zombie en su dificultad máxima.</gray>"
+        - ""
+        - "<dark_gray>•</dark_gray> <red>Daño Masivo: +18.0</red>"
+        - "<dark_gray>•</dark_gray> <gold>Filo VII, Aspecto Ígneo III</gold>"
+        - "<dark_gray>•</dark_gray> <aqua>Condición: Irrompible</aqua>"
+        - ""
+        - "<gradient:#fa709a:#fee140><b>🏆 RECOMPENSA DE VICTORIA DEFINITIVA</b></gradient>"
+      custom-model-data: 10002 # Modelo 3D de espada legendaria
+      attack-damage: 18.0
+      unbreakable: true
+      enchantments:
+        - "SHARPNESS:7"
+        - "FIRE_ASPECT:3"
+        - "LOOTING:4"
+    titan_hammer:
+      material: MACE # Purpur/Paper 1.20.6+: mazo o hacha de combate pesado
+      amount: 1
+      display-name: "<gradient:#f12711:#f5af19><b>🔨 MARTILLO DEL TITÁN SÍSMICO</b></gradient>"
+      lore:
+        - "<gray>Un martillo colosal capaz de quebrar el suelo</gray>"
+        - "<gray>y pulverizar hordas enteras de no-muertos.</gray>"
+        - ""
+        - "<dark_gray>•</dark_gray> <gold>Daño de Impacto: +22.0</gold>"
+        - "<dark_gray>•</dark_gray> <yellow>Densidad V, Rotura III</yellow>"
+        - "<dark_gray>•</dark_gray> <aqua>Condición: Irrompible</aqua>"
+        - ""
+        - "<gradient:#fa709a:#fee140><b>🏆 RECOMPENSA DE VICTORIA DEFINITIVA</b></gradient>"
+      custom-model-data: 10003 # Modelo 3D de martillo colosal
+      attack-damage: 22.0
+      unbreakable: true
+      enchantments:
+        - "DENSITY:5"
+        - "BREACH:4"
+        - "UNBREAKING:5"
+    apocalypse_pickaxe:
+      material: NETHERITE_PICKAXE
+      amount: 1
+      display-name: "<gradient:#00f2fe:#4facfe><b>⛏ PICO DEL MINERO DE LAS CATACUMBAS</b></gradient>"
+      lore:
+        - "<gray>Extraído de las profundidades de la arena de combate.</gray>"
+        - "<gray>Desintegra cualquier mineral al instante.</gray>"
+        - ""
+        - "<dark_gray>•</dark_gray> <aqua>Eficiencia VII, Fortuna V</aqua>"
+        - "<dark_gray>•</dark_gray> <green>Condición: Irrompible</green>"
+        - ""
+        - "<gradient:#fa709a:#fee140><b>🏆 RECOMPENSA DE VICTORIA DEFINITIVA</b></gradient>"
+      custom-model-data: 10004 # Modelo 3D de pico custom
+      unbreakable: true
+      enchantments:
+        - "EFFICIENCY:7"
+        - "FORTUNE:5"
+  # Mensajes y títulos de victoria exclusiva
+  message: "<gradient:#00f2fe:#4facfe><b>🏆 ¡PREMIO DE VICTORIA!</b></gradient> <gray>Has recibido $%money% y recompensas exclusivas por repeler la invasión.</gray>"
+  title: "<gradient:#43e97b:#38f9d7><b>¡CAMPEÓN DE LA INVASIÓN!</b></gradient>"
+  subtitle: "<yellow>Superaste las 20 rondas completas</yellow>"
